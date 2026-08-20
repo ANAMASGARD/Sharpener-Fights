@@ -1,6 +1,6 @@
 # Sharpener Fights compact project memory
 
-> Handoff snapshot from the initial design and implementation session, updated 2026-08-20. Read this for intent, decisions, completed work, and unfinished work. Read [`../Architecture.md`](../Architecture.md) for current file ownership and runtime details. Verify mutable facts against the live repository before acting.
+> Handoff snapshot from the initial design and implementation session, updated 2026-08-21. Read this for intent, decisions, completed work, and unfinished work. Read [`../Architecture.md`](../Architecture.md) for current file ownership and runtime details. Verify mutable facts against the live repository before acting.
 
 ## Product north star
 
@@ -12,7 +12,7 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 
 ## Durable decisions
 
-- Stack: Next.js + TypeScript, React Three Fiber/Three.js for rendering, Rapier Wasm for physics, Pointer Events for all pointer types, Web Audio for current sound synthesis.
+- Stack: Next.js + TypeScript, React Three Fiber/Three.js for rendering, Rapier Wasm for physics, Pointer Events for all pointer types, Web Audio for synthesized cues, and HTML media for supplied MP3 assets.
 - Physics authority: one headless `packages/game-core` module. Rendering never owns rules or a second Rapier world. `@react-three/rapier` is intentionally excluded.
 - Simulation: fixed 120 Hz regardless of display refresh. Local physics runs in a Web Worker; browser snapshots currently arrive at up to 60 Hz.
 - Arena: long open wooden school desk with no rails. Falling must remain visible; elimination occurs only at a lower death plane.
@@ -53,8 +53,8 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 - Stationery-case selection screen with six colors, persistent selection, a CSS-rendered realistic preview, and a lock-in transition.
 - Procedural 3D sharpener including body, inlet, blade, screw, underside, PBR materials, and active-player highlight.
 - Full 3D classroom: blackboard scoreboard, pale wall, tiled floor, generated wood grain/scratches, long desk, visible legs, lighting, shadow, and fog.
-- Unified mouse/touch/stylus drag path, aim guideline, vertical power meter, timer ticket, audio toggles, reset/rematch, and result cards.
-- Physics-driven Web Audio cues for flick, sharpener collision, wood impact, scrape, falling, floor impact, and room ambience. Mute state persists.
+- Unified mouse/touch/stylus drag path, aim guideline, vertical power meter, timer ticket, a persistent top-right sound menu, reset/replay, and result cards.
+- Hybrid audio: continuous 50%-volume playground MP3 after the first user gesture; asset-backed sharpener collision; simultaneous bell/winner playback at match end with a seven-second winner cutoff; synthesized flick, wood, scrape, falling, floor, and room cues. Music and SFX mute independently and persist.
 - Responsive portrait and landscape presentation with no forced-rotation gate.
 
 ### Feel tuning requested during implementation
@@ -77,16 +77,32 @@ The repair:
 
 Interactive physics still requires WebGL. The fallback is an honest visual/error state, not a fake second game engine.
 
+### Classroom realism and input-integrity pass
+
+- Replaced flat classroom surfaces with deterministic procedural PBR sets: amber varnished wood, aged satin ceramic tiles with recessed grout, and softly varied painted plaster.
+- Refined visual bevels and metal response on the sharpener body, blade, screw/washer, desk perimeter, and wall baseboard without changing colliders or physics tuning.
+- Tightened the controlled camera modestly while keeping the full desk, legs, board, and floor readable.
+- Added monotonic render tiers: high uses DPR 1.5, 2048 shadows, and optional half-resolution N8AO; balanced uses DPR 1.25 and 1024 native shadows; low uses DPR 1 and 512 native shadows. Coarse/narrow displays start balanced. N8AO capability or runtime failure downgrades to balanced without removing the scene.
+- Fixed four presentation/input defects without changing simulation behavior: stale drags cannot release after a timeout, power UI shows eased impulse power, visual hit points are clamped into legal collider bounds, and display transforms now interpolate instead of being reset by React props.
+- Split the former 1,045-line global stylesheet into scoped selector, match UI, and static-classroom CSS modules; global CSS now contains only shared tokens and primitives.
+
+### Asset audio and winner-report pass
+
+- Added deployment copies of all four supplied MP3 files under `apps/web/public/audio`; the repository-root `public/audio` directory is not served by the nested Next.js workspace.
+- Background music begins on the first legal browser interaction, loops continuously through selector/match transitions at 50% volume, and can be muted separately from SFX through the persistent top-right speaker menu.
+- Sharpener-to-sharpener contacts use the supplied collision sample. A match win starts the bell and winner effect together once; the winner effect stops after seven seconds.
+- Replaced the small match-over status with a classroom-paper winner report showing winner, final score, rounds, turns, and Play Again.
+
 ## Current verified checkpoint
 
-At the end of the implementation session:
+At the end of the asset-audio and winner-report implementation:
 
-- `npm test`: 31 tests passed across 5 files.
+- `npm test`: 50 tests passed across 10 files.
 - `npm run typecheck`: passed for every workspace.
 - `npm run lint`: passed.
 - `npm run build`: passed on Next.js 16.3.1; `/`, `/_not-found`, and `/icon.svg` were generated.
-- `npm run test:e2e`: 3 Chrome journeys passed: selection/shot, portrait usability, and forced-no-WebGL fallback.
-- Browser console audit: clean after adding the icon.
+- `npm run test:e2e`: 8 Chrome journeys passed: selection/shot, portrait usability, supplied-audio/menu persistence, winner audio/report/replay, expired-drag cancellation, reset-drag invalidation, unsupported-N8AO fallback, and forced-no-WebGL fallback.
+- Browser console audit: no errors in the deterministic arena, top-right audio-menu, or winner-report screenshot runs.
 - `git diff --check`: passed.
 
 The unit suite may print a Rapier compatibility initialization deprecation warning; it was non-failing at this checkpoint.
@@ -111,8 +127,8 @@ Recommended next product order remains:
 
 ## Handoff cautions
 
-- At this snapshot, branch `feat/sharpener-fights-v1` still pointed at the original Create Next App commit and the implemented workspace existed as uncommitted/untracked working-tree changes. Preserve the tree and inspect `git status --short` before any Git operation.
-- Do not commit, push, deploy, rebase, discard, or clean files unless the user explicitly authorizes it.
+- This checkpoint combines the physics-first vertical slice, classroom realism/input-integrity pass, and asset-audio/winner-report pass. Verify the live branch and `git status --short` before new work.
+- Commits, pushes, deployments, rebases, discards, and destructive cleanup require explicit user authorization.
 - The root-level legacy Create Next App paths were replaced by `apps/web`; use the workspace paths as runtime truth.
 - `Architecture.md` is the lookup map for changes. Avoid copying its file-by-file detail back into this memory; this file should remain a compact rationale and milestone record.
 - When the implementation changes, record only durable decisions and milestone outcomes here. Keep raw chat transcripts, speculative ideas, and repeated file maps out of this file.

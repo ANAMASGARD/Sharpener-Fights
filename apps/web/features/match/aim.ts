@@ -1,6 +1,11 @@
 export type DeskPoint = { x: number; z: number };
 export type LocalHitPoint = { x: number; y: number; z: number };
 
+export const AIM = Object.freeze({
+  maxDragDistance: 0.28,
+  centerAssistRadius: 0.008,
+});
+
 export function progressivePower(value: number) {
   return Math.pow(value, 1.7);
 }
@@ -33,5 +38,16 @@ export function centerAssist(point: LocalHitPoint, radius: number) {
     x: point.x * retained,
     y: point.y * retained,
     z: point.z * retained,
+  };
+}
+
+export function clampLocalHitPoint(
+  point: LocalHitPoint,
+  halfExtents: LocalHitPoint,
+): LocalHitPoint {
+  return {
+    x: Math.max(-halfExtents.x, Math.min(halfExtents.x, point.x)),
+    y: Math.max(-halfExtents.y, Math.min(halfExtents.y, point.y)),
+    z: Math.max(-halfExtents.z, Math.min(halfExtents.z, point.z)),
   };
 }

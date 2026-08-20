@@ -1,5 +1,6 @@
 "use client";
 
+import { RoundedBox } from "@react-three/drei";
 import { useMemo } from "react";
 import { ExtrudeGeometry, Path, Shape } from "three";
 import type { SharpenerCosmeticId } from "@sharpener/protocol";
@@ -30,10 +31,10 @@ export function SharpenerModel({
     const geometry = new ExtrudeGeometry(body, {
       depth: 0.036,
       bevelEnabled: true,
-      bevelSegments: 3,
-      bevelSize: 0.0013,
-      bevelThickness: 0.0013,
-      curveSegments: 24,
+      bevelSegments: 5,
+      bevelSize: 0.00155,
+      bevelThickness: 0.00145,
+      curveSegments: 32,
       steps: 1,
     });
     geometry.translate(0, 0, -0.018);
@@ -55,28 +56,59 @@ export function SharpenerModel({
         />
       </mesh>
 
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.0005]}>
+      <mesh
+        rotation={[Math.PI / 2, 0, 0]}
+        position={[0, 0, -0.0005]}
+        castShadow
+        receiveShadow
+      >
         <cylinderGeometry args={[0.0058, 0.0058, 0.034, 24]} />
-        <meshStandardMaterial color="#121719" roughness={0.7} />
+        <meshStandardMaterial color="#101414" roughness={0.62} />
       </mesh>
 
-      <mesh position={[0.003, 0.0131, 0]} castShadow>
-        <boxGeometry args={[0.014, 0.0014, 0.029]} />
-        <meshStandardMaterial color="#b9bdba" metalness={0.92} roughness={0.18} />
+      <RoundedBox
+        args={[0.014, 0.00145, 0.029]}
+        radius={0.00065}
+        smoothness={3}
+        position={[0.003, 0.0131, 0]}
+        castShadow
+        receiveShadow
+      >
+        <meshPhysicalMaterial
+          color="#c9cecb"
+          metalness={0.94}
+          roughness={0.16}
+          clearcoat={0.18}
+          clearcoatRoughness={0.22}
+        />
+      </RoundedBox>
+      <mesh position={[0.003, 0.01405, -0.004]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.0038, 0.0038, 0.00055, 28]} />
+        <meshStandardMaterial color="#a4aaa8" metalness={0.9} roughness={0.24} />
       </mesh>
-      <mesh position={[0.003, 0.0142, -0.004]} castShadow>
-        <cylinderGeometry args={[0.003, 0.003, 0.0017, 20]} />
-        <meshStandardMaterial color="#747b7b" metalness={0.95} roughness={0.2} />
+      <mesh position={[0.003, 0.01465, -0.004]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.003, 0.003, 0.0011, 28]} />
+        <meshStandardMaterial color="#777e7c" metalness={0.96} roughness={0.17} />
       </mesh>
-      <mesh position={[0.003, 0.01515, -0.004]} rotation={[0, Math.PI / 4, 0]}>
+      <mesh
+        position={[0.003, 0.0153, -0.004]}
+        rotation={[0, Math.PI / 4, 0]}
+        castShadow
+      >
         <boxGeometry args={[0.0042, 0.0005, 0.0007]} />
         <meshStandardMaterial color="#343a3b" metalness={0.75} roughness={0.34} />
       </mesh>
 
-      <mesh position={[0, -0.0105, 0]}>
-        <boxGeometry args={[0.046, 0.001, 0.031]} />
+      <RoundedBox
+        args={[0.046, 0.001, 0.031]}
+        radius={0.00045}
+        smoothness={2}
+        position={[0, -0.0105, 0]}
+        castShadow
+        receiveShadow
+      >
         <meshStandardMaterial color={cosmetic.edge} roughness={0.65} />
-      </mesh>
+      </RoundedBox>
     </group>
   );
 }

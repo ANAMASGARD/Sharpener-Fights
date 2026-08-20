@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import styles from "./sharpener-selector.module.css";
 import type { SharpenerCosmeticId } from "@sharpener/protocol";
 import {
   COSMETICS,
@@ -9,7 +10,7 @@ import {
   readStoredCosmetic,
   writeStoredCosmetic,
 } from "./cosmetics";
-import { gameAudio, readAudioPreferences } from "./audio";
+import { gameAudio } from "./audio";
 
 export type MatchCosmetics = readonly [
   SharpenerCosmeticId,
@@ -20,7 +21,7 @@ function SharpenerPreview({ cosmetic }: { cosmetic: SharpenerCosmeticId }) {
   const colors = getCosmetic(cosmetic);
   return (
     <div
-      className="selector-sharpener-wrap"
+      className={styles["selector-sharpener-wrap"]}
       style={{
         "--sharpener-body": colors.body,
         "--sharpener-edge": colors.edge,
@@ -28,14 +29,14 @@ function SharpenerPreview({ cosmetic }: { cosmetic: SharpenerCosmeticId }) {
       } as React.CSSProperties}
       aria-hidden="true"
     >
-      <div className="selector-shadow" />
-      <div className="selector-sharpener">
-        <div className="selector-pencil-hole"><span /></div>
-        <div className="selector-blade">
-          <span className="selector-blade-edge" />
-          <span className="selector-screw" />
+      <div className={styles["selector-shadow"]} />
+      <div className={styles["selector-sharpener"]}>
+        <div className={styles["selector-pencil-hole"]}><span /></div>
+        <div className={styles["selector-blade"]}>
+          <span className={styles["selector-blade-edge"]} />
+          <span className={styles["selector-screw"]} />
         </div>
-        <span className="selector-brand">SF</span>
+        <span className={styles["selector-brand"]}>SF</span>
       </div>
     </div>
   );
@@ -56,7 +57,6 @@ export function SharpenerSelector({
 
   function lockIn() {
     if (closing) return;
-    gameAudio.setPreferences(readAudioPreferences(window.localStorage));
     gameAudio.unlock();
     gameAudio.playUiClick();
     writeStoredCosmetic(window.localStorage, selected);
@@ -67,43 +67,44 @@ export function SharpenerSelector({
   }
 
   return (
-    <main className="selection-screen">
-      <div className="selection-grain" aria-hidden="true" />
-      <section className={`sharpener-case${closing ? " case-closing" : ""}`}>
-        <header className="case-lid">
-          <span className="case-kicker">Schoolyard series</span>
+    <main className={styles["selection-screen"]}>
+      <div className={styles["selection-grain"]} aria-hidden="true" />
+      <section className={`${styles["sharpener-case"]}${closing ? ` ${styles["case-closing"]}` : ""}`}>
+        <header className={styles["case-lid"]}>
+          <span className={styles["case-kicker"]}>Schoolyard series</span>
           <h1>Sharpener<br />Fights</h1>
-          <div className="case-mark" aria-hidden="true">
+          <div className={styles["case-mark"]} aria-hidden="true">
             <span />
             <b>×</b>
             <span />
           </div>
         </header>
 
-        <div className="case-tray">
-          <div className="preview-well" aria-label={`${cosmetic.name} preview`}>
+        <div className={styles["case-tray"]}>
+          <div
+            className={styles["preview-well"]}
+            data-part="sharpener-preview"
+            aria-label={`${cosmetic.name} preview`}
+          >
             <SharpenerPreview cosmetic={selected} />
           </div>
 
-          <div className="swatch-grid" role="radiogroup" aria-label="Sharpener color">
+          <div className={styles["swatch-grid"]} role="radiogroup" aria-label="Sharpener color">
             {COSMETICS.map((option) => (
               <button
                 key={option.id}
                 type="button"
                 role="radio"
                 aria-checked={selected === option.id}
-                className="swatch-button"
+                className={styles["swatch-button"]}
                 onClick={() => {
-                  gameAudio.setPreferences(
-                    readAudioPreferences(window.localStorage),
-                  );
                   gameAudio.unlock();
                   gameAudio.playUiClick();
                   setSelected(option.id);
                 }}
               >
                 <span
-                  className="swatch-color"
+                  className={styles["swatch-color"]}
                   style={{
                     "--swatch": option.body,
                     "--swatch-edge": option.edge,
@@ -116,7 +117,7 @@ export function SharpenerSelector({
         </div>
       </section>
 
-      <section className="selection-ticket">
+      <section className={styles["selection-ticket"]}>
         <p>Choose your color</p>
         <strong>{cosmetic.name}</strong>
         <span>Same weight. Same power. Pure style.</span>

@@ -1,28 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { GameEvent, GameSnapshot } from "@sharpener/protocol";
-import {
-  gameAudio,
-  readAudioPreferences,
-  writeAudioPreferences,
-  type AudioPreferences,
-} from "./audio";
+import { gameAudio } from "./audio";
 
 export function useGameAudio(
   events: readonly GameEvent[],
   snapshot: GameSnapshot | null,
 ) {
-  const [preferences, setPreferences] = useState<AudioPreferences>(() =>
-    typeof window === "undefined"
-      ? { sfxMuted: false, ambienceMuted: false }
-      : readAudioPreferences(window.localStorage),
-  );
-
-  useEffect(() => {
-    gameAudio.setPreferences(preferences);
-    writeAudioPreferences(window.localStorage, preferences);
-  }, [preferences]);
+  const previousPhase = useRef(snapshot?.phase ?? null);
 
   useEffect(() => {
     gameAudio.handleEvents(events);
@@ -33,20 +19,16 @@ export function useGameAudio(
     return () => gameAudio.updateSlide(null);
   }, [snapshot]);
 
-  const toggleSfx = useCallback(() => {
-    gameAudio.unlock();
-    gameAudio.playUiClick();
-    setPreferences((value) => ({ ...value, sfxMuted: !value.sfxMuted }));
-  }, []);
-
-  const toggleAmbience = useCallback(() => {
-    gameAudio.unlock();
-    gameAudio.playUiClick();
-    setPreferences((value) => ({
-      ...value,
-      ambienceMuted: !value.ambienceMuted,
-    }));
-  }, []);
-
-  return { preferences, toggleSfx, toggleAmbience };
+  useEffect(() => {
+    const phase = snapshot?.phase ?? null;
+    if (phase === "MATCH_OVER" && previousPhase.current !== "MATCH_OVER") {
+      gameAudio.playVictory();
+    } else if (
+      previousPhase.current === "MATCH_OVER" &&
+      phase !== "MATCH_OVER"
+    ) {
+      gameAudio.resetVictory();
+    }
+    previousPhase.current = phase;
+  }, [snapshot?.phase]);
 }

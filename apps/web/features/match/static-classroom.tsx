@@ -1,4 +1,5 @@
 import type { GameSnapshot } from "@sharpener/protocol";
+import styles from "./static-classroom.module.css";
 import { getCosmetic } from "./cosmetics";
 import type { MatchCosmetics } from "./sharpener-selector";
 
@@ -12,7 +13,7 @@ function StaticSharpener({
   const cosmetic = getCosmetic(cosmeticId);
   return (
     <div
-      className={`fallback-fighter fallback-fighter-${player}`}
+      className={`${styles["fallback-fighter"]} ${styles[`fallback-fighter-${player}`]}`}
       style={{
         "--fighter-body": cosmetic.body,
         "--fighter-edge": cosmetic.edge,
@@ -20,8 +21,8 @@ function StaticSharpener({
       } as React.CSSProperties}
       aria-hidden="true"
     >
-      <span className="fallback-fighter-hole" />
-      <span className="fallback-fighter-blade"><i /></span>
+      <span className={styles["fallback-fighter-hole"]} />
+      <span className={styles["fallback-fighter-blade"]}><i /></span>
     </div>
   );
 }
@@ -35,34 +36,38 @@ export function StaticClassroom({
 }) {
   const scores = snapshot?.scores ?? [0, 0];
   return (
-    <div className="classroom-fallback" aria-hidden="true">
-      <div className="fallback-wall">
-        <div className="fallback-blackboard">
-          <div className="fallback-board-scratches" />
-          <div className="fallback-board-title">Sharpener Fights</div>
-          <div className="fallback-board-meta">
+    <div
+      className={styles["classroom-fallback"]}
+      data-layer="static-classroom"
+      aria-hidden="true"
+    >
+      <div className={styles["fallback-wall"]}>
+      <div className={styles["fallback-blackboard"]} data-part="classroom-blackboard">
+          <div className={styles["fallback-board-scratches"]} />
+          <div className={styles["fallback-board-title"]}>Sharpener Fights</div>
+          <div className={styles["fallback-board-meta"]}>
             Round {snapshot?.roundId ?? 1} · Best of five
           </div>
-          <div className="fallback-score-row">
+          <div className={styles["fallback-score-row"]}>
             <span>Orange</span><b>{scores[0]}</b>
             <i />
             <span>Blue</span><b>{scores[1]}</b>
           </div>
-          <div className="fallback-chalk" />
+          <div className={styles["fallback-chalk"]} />
         </div>
-        <div className="fallback-chair">
+        <div className={styles["fallback-chair"]}>
           <span />
         </div>
       </div>
-      <div className="fallback-tile-floor" />
-      <div className="fallback-desk-legs">
+      <div className={styles["fallback-tile-floor"]} data-part="classroom-floor" />
+      <div className={styles["fallback-desk-legs"]}>
         <i /><i /><i /><i />
       </div>
-      <div className="fallback-desk">
-        <div className="fallback-wood-grain" />
-        <span className="fallback-scratch fallback-scratch-one" />
-        <span className="fallback-scratch fallback-scratch-two" />
-        <span className="fallback-carving">A + R</span>
+      <div className={styles["fallback-desk"]} data-part="classroom-desk">
+        <div className={styles["fallback-wood-grain"]} />
+        <span className={`${styles["fallback-scratch"]} ${styles["fallback-scratch-one"]}`} />
+        <span className={`${styles["fallback-scratch"]} ${styles["fallback-scratch-two"]}`} />
+        <span className={styles["fallback-carving"]}>A + R</span>
         <StaticSharpener cosmeticId={cosmetics[1]} player={1} />
         <StaticSharpener cosmeticId={cosmetics[0]} player={0} />
       </div>

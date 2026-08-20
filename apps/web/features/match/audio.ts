@@ -1,4 +1,5 @@
 import type { GameEvent, GameSnapshot } from "@sharpener/protocol";
+import { GameMediaAudio } from "./media-audio";
 
 export type AudioCueName =
   | "flick"
@@ -14,12 +15,12 @@ export type AudioCue = {
 
 export type AudioPreferences = {
   sfxMuted: boolean;
-  ambienceMuted: boolean;
+  musicMuted: boolean;
 };
 
 export const DEFAULT_AUDIO_PREFERENCES: AudioPreferences = {
   sfxMuted: false,
-  ambienceMuted: false,
+  musicMuted: false,
 };
 
 const AUDIO_STORAGE_KEY = "sharpener-fights:audio";
@@ -53,11 +54,15 @@ export function readAudioPreferences(
     if (
       value &&
       typeof value.sfxMuted === "boolean" &&
-      typeof value.ambienceMuted === "boolean"
+      (typeof value.musicMuted === "boolean" ||
+        typeof value.ambienceMuted === "boolean")
     ) {
       return {
         sfxMuted: value.sfxMuted,
-        ambienceMuted: value.ambienceMuted,
+        musicMuted:
+          typeof value.musicMuted === "boolean"
+            ? value.musicMuted
+            : value.ambienceMuted,
       };
     }
   } catch {
@@ -74,6 +79,7 @@ export function writeAudioPreferences(
 }
 
 class GameAudioDirector {
+  private readonly media = new GameMediaAudio();
   private context: AudioContext | null = null;
   private sfxGain: GainNode | null = null;
   private ambienceGain: GainNode | null = null;
@@ -82,6 +88,7 @@ class GameAudioDirector {
   private preferences = DEFAULT_AUDIO_PREFERENCES;
 
   unlock() {
+    this.media.unlock();
     if (typeof AudioContext === "undefined") return;
     if (this.context) {
       void this.context.resume();
@@ -104,6 +111,7 @@ class GameAudioDirector {
 
   setPreferences(preferences: AudioPreferences) {
     this.preferences = preferences;
+    this.media.setPreferences(preferences);
     this.applyPreferences();
   }
 
@@ -139,6 +147,14 @@ class GameAudioDirector {
     this.tone(560, 0.035, 0.035, "triangle", 760);
   }
 
+  playVictory() {
+    this.media.playVictory();
+  }
+
+  resetVictory() {
+    this.media.resetVictory();
+  }
+
   private applyPreferences() {
     if (!this.context) return;
     this.sfxGain?.gain.setTargetAtTime(
@@ -147,21 +163,23 @@ class GameAudioDirector {
       0.02,
     );
     this.ambienceGain?.gain.setTargetAtTime(
-      this.preferences.ambienceMuted ? 0 : 0.15,
+      this.preferences.musicMuted ? 0 : 0.15,
       this.context.currentTime,
       0.08,
     );
   }
 
   private play({ cue, strength01 }: AudioCue) {
-    if (!this.context || this.preferences.sfxMuted) return;
+    if (this.preferences.sfxMuted) return;
     const strength = Math.max(0.08, Math.min(strength01, 1));
+    if (cue === "metal-click") {
+      this.media.playCollision(strength);
+      return;
+    }
+    if (!this.context) return;
     if (cue === "flick") {
       this.noise(0.055, 0.08, 1800);
       this.tone(430, 0.045, 0.045, "triangle", 820);
-    } else if (cue === "metal-click") {
-      this.tone(1300 + strength * 1100, 0.075, 0.06 * strength, "square", 700);
-      this.noise(0.045, 0.035 * strength, 3500);
     } else if (cue === "wood-impact") {
       this.tone(180 - strength * 45, 0.095, 0.08 * strength, "sine", 78);
       this.noise(0.07, 0.035 * strength, 720);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateShot, centerAssist } from "./aim";
+import { calculateShot, centerAssist, clampLocalHitPoint } from "./aim";
 
 describe("calculateShot", () => {
   it("launches opposite to a backward drag with progressive bounded power", () => {
@@ -46,5 +46,25 @@ describe("centerAssist", () => {
       y: 0,
       z: 0,
     });
+  });
+});
+
+describe("clampLocalHitPoint", () => {
+  it("projects raised visual details into the legal collider bounds", () => {
+    expect(
+      clampLocalHitPoint(
+        { x: 0.019, y: 0.01515, z: -0.016 },
+        { x: 0.025, y: 0.012, z: 0.018 },
+      ),
+    ).toEqual({ x: 0.019, y: 0.012, z: -0.016 });
+  });
+
+  it("clamps every axis while preserving valid off-center spin offsets", () => {
+    expect(
+      clampLocalHitPoint(
+        { x: -0.04, y: -0.03, z: 0.05 },
+        { x: 0.025, y: 0.012, z: 0.018 },
+      ),
+    ).toEqual({ x: -0.025, y: -0.012, z: 0.018 });
   });
 });

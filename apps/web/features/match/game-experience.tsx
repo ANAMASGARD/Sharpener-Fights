@@ -6,16 +6,28 @@ import {
   SharpenerSelector,
   type MatchCosmetics,
 } from "./sharpener-selector";
+import { AudioMenu } from "./audio-menu";
+import { useAudioPreferences } from "./use-audio-preferences";
 
 export default function GameExperience() {
   const [cosmetics, setCosmetics] = useState<MatchCosmetics | null>(null);
-
-  if (!cosmetics) return <SharpenerSelector onStart={setCosmetics} />;
+  const { preferences, toggleMusic, toggleSfx } = useAudioPreferences();
 
   return (
-    <MatchCanvas
-      cosmetics={cosmetics}
-      onChangeSharpener={() => setCosmetics(null)}
-    />
+    <>
+      <AudioMenu
+        preferences={preferences}
+        onToggleMusic={toggleMusic}
+        onToggleSfx={toggleSfx}
+      />
+      {cosmetics ? (
+        <MatchCanvas
+          cosmetics={cosmetics}
+          onChangeSharpener={() => setCosmetics(null)}
+        />
+      ) : (
+        <SharpenerSelector onStart={setCosmetics} />
+      )}
+    </>
   );
 }

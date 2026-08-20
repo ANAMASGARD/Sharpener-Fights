@@ -1,0 +1,123 @@
+.audio-menu {
+  position: fixed;
+  z-index: 60;
+  top: max(0.85rem, env(safe-area-inset-top));
+  right: max(0.85rem, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.audio-trigger {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(245, 235, 207, 0.58);
+  border-radius: 50%;
+  background: rgba(18, 29, 27, 0.88);
+  color: #f2ead4;
+  box-shadow: 0 8px 22px rgba(23, 25, 21, 0.3);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.audio-trigger svg {
+  width: 1.35rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
+}
+
+.audio-trigger svg path:first-child {
+  fill: currentColor;
+  stroke-width: 0;
+}
+
+.audio-trigger:focus-visible,
+.audio-panel button:focus-visible {
+  outline: 3px solid #e7c55e;
+  outline-offset: 3px;
+}
+
+.audio-panel {
+  position: relative;
+  display: grid;
+  width: 11.5rem;
+  gap: 0.35rem;
+  padding: 0.72rem;
+  border: 1px solid rgba(247, 236, 203, 0.48);
+  border-radius: 0.28rem;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025), transparent),
+    rgba(15, 28, 26, 0.94);
+  color: #f2ead4;
+  box-shadow: 0 16px 38px rgba(16, 20, 17, 0.36);
+  transform-origin: top right;
+  animation: panel-in 160ms ease-out both;
+  backdrop-filter: blur(12px);
+}
+
+.audio-panel::before {
+  position: absolute;
+  top: -0.35rem;
+  right: 1rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  content: "";
+  background: #172725;
+  transform: rotate(45deg);
+}
+
+.panel-label {
+  padding: 0.1rem 0.2rem 0.35rem;
+  color: #ddc66f;
+  font: 400 0.72rem/1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.audio-panel button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.62rem 0.68rem;
+  border: 1px solid rgba(243, 233, 207, 0.18);
+  border-radius: 0.18rem;
+  background: rgba(244, 237, 214, 0.07);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.audio-panel button:hover {
+  background: rgba(244, 237, 214, 0.13);
+}
+
+.audio-panel button b {
+  color: #83c5b0;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.audio-panel button[aria-pressed="true"] b {
+  color: #e28a69;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.3rem) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audio-panel {
+    animation: none;
+  }
+}

@@ -73,7 +73,10 @@ apps/web ─────────► packages/game-core ───────
 | `apps/web/features/match/game-experience.tsx` | Selector-to-match screen transition | Adding a lobby, menu, mode selection, or other top-level game screen |
 | `apps/web/app/layout.tsx` | Metadata and viewport | Changing title, description, viewport policy, or theme color |
 | `apps/web/app/icon.svg` | Browser/app icon | Changing the favicon artwork |
-| `apps/web/app/globals.css` | All current DOM UI styling and CSS fallback art | Changing layout, typography, colors, controls, selector case, responsive rules, or fallback classroom composition |
+| `apps/web/app/globals.css` | Global fonts, design tokens, reset, loading state, accessibility utility, and reduced-motion policy | Changing truly global presentation only |
+| `apps/web/features/match/sharpener-selector.module.css` | Scoped selector case and cosmetic-preview presentation | Changing the selection screen or its responsive layout |
+| `apps/web/features/match/match-ui.module.css` | Scoped match canvas and HUD presentation | Changing the turn ticket, power meter, match controls, or result overlays |
+| `apps/web/features/match/static-classroom.module.css` | Scoped no-WebGL classroom artwork | Changing the resilient DOM fallback composition |
 
 ### Selection and cosmetics
 
@@ -101,24 +104,18 @@ Changing the three hex values in `cosmetics.ts` updates the 3D model, selector p
 
 | Path | Owns | Change here when |
 | --- | --- | --- |
-| `apps/web/features/match/match-canvas.tsx` | R3F canvas, camera, pointer gesture adapter, aim line, render interpolation, HUD, turn/power/result controls | Changing match interaction, camera framing, HUD markup, or snapshot-to-scene adaptation |
-| `apps/web/features/match/aim.ts` | Pure pull-back vector, dead zone, progressive power curve, center assist | Tuning drag feel or aiming mathematics |
+| `apps/web/features/match/match-canvas.tsx` | R3F canvas, camera, pointer gesture adapter, quality selection, aim line, render interpolation, HUD, turn/power/result controls | Changing match interaction, camera framing, HUD markup, or snapshot-to-scene adaptation |
+| `apps/web/features/match/aim.ts` | Pure pull-back vector, dead zone, progressive power curve, center assist, and legal local-hit projection | Tuning drag feel or aiming mathematics |
+| `apps/web/features/match/aim-session.ts` | Immutable drag authority and turn-scoped power visibility | Changing how an in-progress client gesture responds to turn changes |
 | `apps/web/features/match/aim.test.ts` | Aim behavior contract | Any aiming calculation changes |
 | `apps/web/features/match/sharpener-model.tsx` | Procedural Three.js sharpener geometry and PBR materials | Changing 3D shape, hole, blade, screw, scale, or material response |
-| `apps/web/features/match/classroom-environment.tsx` | 3D wall, blackboard texture, scoreboard, desk, wood texture, floor, grid, lights, shadows, and fog | Changing the interactive 3D classroom |
+| `apps/web/features/match/classroom-environment.tsx` | 3D wall, blackboard, desk, floor geometry, lighting, shadows, and fog | Changing the interactive classroom composition |
+| `apps/web/features/match/classroom-materials.ts` | Deterministic procedural wood, ceramic-tile, and plaster PBR texture sets | Changing classroom surface color, grain, roughness, bump detail, or texture budgets |
+| `apps/web/features/match/render-quality.ts` | High/balanced/low render budgets and monotonic degradation policy | Changing DPR, shadow, anisotropy, or optional-effect budgets |
+| `apps/web/features/match/quality-effects.tsx` | Lazy high-tier effects boundary; balanced/low tiers do not load the post-processing chunk | Changing optional-effect loading or module/lifecycle failure behavior |
+| `apps/web/features/match/high-tier-effects.tsx` | High-tier half-resolution N8AO, final AgX tone mapping, and guarded frame rendering | Tuning ambient occlusion or the high-tier post-processing pipeline |
 | `apps/web/features/match/static-classroom.tsx` | DOM fallback structure and fallback score values | Changing the no-WebGL classroom markup |
 | `apps/web/features/match/webgl-support.ts` | WebGL capability probe | Changing renderer availability policy |
-
-Important `globals.css` regions:
-
-| Selectors | Visual ownership |
-| --- | --- |
-| `.selection-*`, `.sharpener-case`, `.case-*` | Notebook background and orange stationery case |
-| `.preview-well`, `.selector-*` | Non-WebGL realistic sharpener preview |
-| `.swatch-*`, `.selection-ticket` | Color buttons and lock-in ticket |
-| `.classroom-fallback`, `.fallback-*` | Complete DOM wall, blackboard, tiled floor, desk, legs, scratches, and fallback sharpeners |
-| `.turn-ticket`, `.power-rail`, `.match-controls`, `.result-card` | Match HUD and controls |
-| media queries at the bottom | Portrait, short-landscape, and reduced-motion behavior |
 
 The interactive 3D sharpener is currently procedural; there are no `.glb` assets or Blender export pipeline yet. The selector intentionally uses CSS rather than another R3F canvas so the application consumes only one WebGL context during a match.
 
@@ -136,19 +133,24 @@ The Worker is the only owner of the local `GameSimulation`. It advances at 120 H
 | Path | Owns | Change here when |
 | --- | --- | --- |
 | `apps/web/features/match/audio.ts` | Event-to-cue mapping, Web Audio synthesis, slide loop, ambience, preferences serialization | Changing sounds, mix levels, audio persistence, or physics-event sonification |
-| `apps/web/features/match/use-game-audio.ts` | React adapter for event playback, motion updates, and mute buttons | Changing how UI state drives the audio director |
+| `apps/web/features/match/media-audio.ts` | Long-lived HTML media elements for background, collision, and victory MP3 playback | Changing asset paths, loop/volume policy, or victory cutoff behavior |
+| `apps/web/features/match/use-audio-preferences.ts` | Shared first-interaction unlock, preference state, persistence, and independent toggles | Changing how Music/SFX settings behave across screens |
+| `apps/web/features/match/audio-menu.tsx` | Persistent top-right speaker menu | Changing the sound-settings UI |
+| `apps/web/features/match/use-game-audio.ts` | React adapter for physics events, slide motion, and one-shot match victory playback | Changing how snapshots/events drive the audio director |
 | `apps/web/features/match/audio.test.ts` | Cue and preference behavior | Audio mapping or storage behavior changes |
 
-Audio uses the native Web Audio API and synthesizes all current sounds; there are no audio asset files. The declared `howler` dependency is not used by the current implementation. Audio unlock occurs after a user gesture. Physics events map as follows:
+Audio uses a hybrid pipeline. Web Audio synthesizes flick, wood, floor, falling, slide, and subtle room cues. One shared HTML-media controller plays files from `apps/web/public/audio`: playground music loops at volume `0.5`, collision contact uses the supplied sharpener MP3, and match victory starts the school bell plus winner effect together while stopping the winner effect after seven seconds. Audio unlock occurs on the first pointer/keyboard gesture because browsers block audible autoplay. The singleton controller lives above selector/match transitions, so music does not restart between screens. Media play rejection cannot break gameplay.
 
 | Event | Cue |
 | --- | --- |
 | `SHOT_ACCEPTED` | flick |
 | `FALL_STARTED` | falling whoosh |
-| sharpener/sharpener contact | metal click |
+| sharpener/sharpener contact | `/audio/sharpener-collision.mp3` |
 | sharpener/table contact | wood impact |
 | sharpener/floor contact | floor thud |
 | horizontal surface velocity | continuous scrape/slide level |
+| first user interaction | looping `/audio/PlayGround-BG.mp3` at 50% volume |
+| `MATCH_OVER` transition | school bell plus first seven seconds of winner effect |
 
 ### Shared protocol
 
@@ -257,14 +259,17 @@ Timer expiry changes the active player and increments `turnId` while remaining i
 
 ## 7. Rendering and resilience
 
-The match uses one R3F `<Canvas>` with DPR clamped to 1–1.5 and the browser-default power preference. `ResponsiveCamera` uses separate portrait and landscape positions/FOV but preserves a controlled perspective view; there are no OrbitControls during play.
+The match uses one R3F `<Canvas>` and a monotonic adaptive quality policy. Fine-pointer viewports at least 900 px wide start at high quality (DPR 1.5, 2048 shadows, anisotropy 8, optional half-resolution N8AO); coarse/narrow displays start balanced (DPR 1.25, 1024 shadows, anisotropy 4); sustained low performance can degrade through balanced to low (DPR 1, 512 shadows, anisotropy 2). Quality never rises during a match. N8AO requires WebGL2 plus float color buffers, is isolated behind an error boundary, and failure downgrades to balanced without removing the Canvas.
+
+`ResponsiveCamera` uses separate portrait and landscape positions/FOV while preserving a controlled elevated perspective and complete desk/blackboard composition; there are no OrbitControls during play. R3F display groups initialize once per fighter/round and then lerp/slerp exclusively toward snapshots, so React updates do not defeat interpolation.
 
 `ClassroomEnvironment` builds all current 3D scenery in code:
 
-- Canvas-generated wood grain and scratches;
+- Deterministic Canvas-generated wood albedo, roughness, and bump detail;
+- deterministic aged-ceramic and painted-plaster PBR texture sets;
 - Canvas-generated blackboard score texture;
 - long rounded desk and visual metal legs;
-- wall, floor grid, lighting, shadows, hemisphere fill, and fog.
+- beveled wall baseboard, tile/grout floor, soft window light, shadows, hemisphere fill, and fog.
 
 `supportsWebGL()` probes WebGL2 then WebGL and releases the probe context. `StaticClassroom` is always mounted beneath the R3F layer. When WebGL is unavailable, the R3F canvas is not constructed and the DOM scene remains visible with a hardware-acceleration notice. Keep the fallback structurally independent from Three.js so renderer failure cannot erase it.
 
@@ -275,7 +280,7 @@ There is no database or backend. Browser-local preferences are:
 | Key | Value |
 | --- | --- |
 | `sharpener-fights:cosmetic` | One validated cosmetic ID |
-| `sharpener-fights:audio` | `{ sfxMuted, ambienceMuted }` JSON |
+| `sharpener-fights:audio` | `{ sfxMuted, musicMuted }` JSON; legacy `ambienceMuted` is migrated on read |
 
 Malformed or unknown values fall back to defaults. Scores and matches are in-memory and reset on reload.
 
@@ -286,9 +291,12 @@ Malformed or unknown values fall back to defaults. Scores and matches are in-mem
 | Protocol validation | `packages/protocol/src/index.test.ts` | normalized finite commands and valid cosmetics |
 | Rules/physics interface | `packages/game-core/src/index.test.ts` | 120 Hz stepping, legal shots, torque, CCD profile, timer pass, fall/death sequence, contact events, rounds, match win, shot-limit draw |
 | Pure aiming | `apps/web/features/match/aim.test.ts` | direction, progressive power, cap, dead zone, center assist |
+| Client turn authority | `apps/web/features/match/aim-session.test.ts` | stale-drag rejection and turn-scoped power visibility |
+| Render quality | `apps/web/features/match/render-quality.test.ts` | device classification, render budgets, N8AO capability gate, monotonic degradation |
 | Cosmetics | `apps/web/features/match/cosmetics.test.ts` | six fair choices, distinct opponent color, storage validation |
-| Audio | `apps/web/features/match/audio.test.ts` | event mapping and mute preference parsing |
-| Browser journey | `e2e/local-match.spec.ts` | selection, pointer release, phase change, portrait usability, DOM classroom, WebGL-disabled fallback |
+| Audio | `audio.test.ts`, `media-audio.test.ts` | event mapping, preference migration, loop/volume, independent mute, collision, simultaneous victory, seven-second cutoff, and reset |
+| Match summary | `apps/web/features/match/match-summary.test.ts` | winner label, final score, rounds, and turns |
+| Browser journey | `e2e/local-match.spec.ts` | selection, pointer release, audio menu/playback calls/assets, timeout-drag cancellation, quality fallback, portrait usability, DOM classroom, WebGL-disabled fallback |
 
 Use the `GameSimulation` interface for rules tests. Avoid testing physics by reproducing its internal calculations in UI tests.
 
@@ -299,12 +307,13 @@ Use the `GameSimulation` interface for rules tests. Avoid testing physics by rep
 | Recolor an existing sharpener | `cosmetics.ts` | Run cosmetic tests and visually inspect selector, R3F, and fallback |
 | Add/remove/rename a color | `protocol/src/index.ts`, `cosmetics.ts` | Update protocol/cosmetic tests and any saved-value migration policy |
 | Change sharpener 3D shape | `sharpener-model.tsx` | If physical dimensions change, deliberately reconcile `PHYSICS.sharpenerHalfExtents` and tests |
-| Change selector preview anatomy | `sharpener-selector.tsx`, `globals.css` `.selector-*` | Keep it DOM/CSS; verify there is no selector canvas |
-| Change desk/board/floor appearance | `classroom-environment.tsx` and `globals.css` `.fallback-*` | Keep interactive and fallback compositions aligned |
+| Change selector preview anatomy | `sharpener-selector.tsx`, `sharpener-selector.module.css` | Keep it DOM/CSS; verify there is no selector canvas |
+| Change desk/board/floor appearance | `classroom-environment.tsx`, `classroom-materials.ts`, and `static-classroom.module.css` | Keep interactive and fallback compositions aligned |
 | Change camera/top-down framing | `ResponsiveCamera` in `match-canvas.tsx` | Check desktop, portrait, table edges, floor, board, HUD, and pointer hit areas |
 | Tune shot strength/feel | `aim.ts`, `PHYSICS.maxImpulse`, friction/damping in game core | Change tests first; test weak/medium/max pulls and edge falls in browser |
 | Change timer/scoring/round rules | `PHYSICS` and state transitions in game core | Update protocol if externally visible shape changes; extend core tests |
-| Add/change sound | `audio.ts` | Prefer physics events as triggers; update audio tests and unlock behavior |
+| Add/change synthesized sound | `audio.ts` | Prefer physics events as triggers; update audio tests and unlock behavior |
+| Add/change MP3 music/effect | `apps/web/public/audio`, `media-audio.ts` | Verify exact casing, browser asset response, mute ownership, and media-controller tests |
 | Change worker cadence | `game.worker.ts` | Preserve fixed 120 Hz authority; benchmark and test catch-up behavior |
 | Add a protocol message | `packages/protocol` first | Validate at the receiving authority and add schema tests |
 | Diagnose a blank arena | `webgl-support.ts`, `static-classroom.tsx`, browser console | Preserve no-WebGL E2E coverage; do not add another Canvas |
@@ -322,7 +331,7 @@ Likely future workspace additions are `apps/realtime` for the authoritative WebS
 - Next.js is pinned to 16.3.1. Read installed documentation under `node_modules/next/dist/docs/` before Next-specific edits.
 - `apps/web/next.config.ts` transpiles the workspace packages and disables the detached TypeScript CLI in the managed environment because its output was lost; `npm run typecheck` remains an explicit gate.
 - R3F/Three cannot provide interactive 3D when the browser disables WebGL. The DOM fallback is visual and explanatory, not a second playable engine.
-- AudioContext creation must remain behind a user gesture.
+- AudioContext creation and audible HTML-media playback must remain behind a user gesture.
 - The current worker snapshot type and worker message union are duplicated locally rather than runtime-validated on receipt. Introduce protocol schemas when this becomes a network trust seam.
 - Zustand and Howler are installed but unused in the current implementation. Do not assume they own state or audio.
 - The current 3D environment and sharpener are procedural. Asset loading, compression, shader prewarming, and GLB budgets remain future concerns.

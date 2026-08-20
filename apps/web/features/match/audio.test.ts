@@ -48,11 +48,17 @@ describe("audio preferences", () => {
     const storage = memoryStorage();
     expect(readAudioPreferences(storage)).toEqual(DEFAULT_AUDIO_PREFERENCES);
 
-    writeAudioPreferences(storage, { sfxMuted: true, ambienceMuted: false });
+    writeAudioPreferences(storage, { sfxMuted: true, musicMuted: false });
     expect(readAudioPreferences(storage)).toEqual({
       sfxMuted: true,
-      ambienceMuted: false,
+      musicMuted: false,
     });
+
+    expect(
+      readAudioPreferences(
+        memoryStorage('{"sfxMuted":false,"ambienceMuted":true}'),
+      ),
+    ).toEqual({ sfxMuted: false, musicMuted: true });
 
     expect(readAudioPreferences(memoryStorage("not-json"))).toEqual(
       DEFAULT_AUDIO_PREFERENCES,
