@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f37a48"/>
+      <stop offset="0.58" stop-color="#bd3f27"/>
+      <stop offset="1" stop-color="#762316"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff9e8"/>
+      <stop offset="0.5" stop-color="#969d9b"/>
+      <stop offset="1" stop-color="#e2dfd2"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="13" fill="#17302d"/>
+  <path d="M10 17h42l4 7-5 25H13L8 42z" fill="url(#body)" stroke="#662417" stroke-width="2.5"/>
+  <ellipse cx="23" cy="31" rx="9" ry="8" fill="#090b0b" stroke="#5e2117" stroke-width="3"/>
+  <path d="m29 23 20 2-2 8-21-2z" fill="url(#metal)" stroke="#59605e"/>
+  <circle cx="38" cy="28" r="3.4" fill="#dcd9cd" stroke="#606664"/>
+  <path d="m36 28 4 .2" stroke="#666b69" stroke-width="1.2"/>
+</svg>

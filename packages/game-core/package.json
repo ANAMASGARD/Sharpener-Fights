@@ -1,0 +1,16 @@
+{
+  "name": "@sharpener/game-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.18.0",
+    "@sharpener/protocol": "0.1.0"
+  }
+}
