@@ -52,6 +52,56 @@ describe("GameMediaAudio", () => {
     expect(music?.play).toHaveBeenCalledOnce();
   });
 
+  it("preloads selection and attack effects without autoplaying them", () => {
+    const { director, elements } = audioHarness();
+
+    director.unlock();
+
+    const selection = elements.get("/audio/Selection-click.mp3");
+    const attack = elements.get("/audio/Sharpener-click.mp3");
+    const lockIn = elements.get("/audio/Lock-IN-sound.mp3");
+    expect(selection?.preload).toBe("auto");
+    expect(attack?.preload).toBe("auto");
+    expect(lockIn?.preload).toBe("auto");
+    expect(selection?.play).not.toHaveBeenCalled();
+    expect(attack?.play).not.toHaveBeenCalled();
+    expect(lockIn?.play).not.toHaveBeenCalled();
+  });
+
+  it("replays selection from the start and deduplicates attacks by shot id", () => {
+    const { director, elements } = audioHarness();
+    director.unlock();
+
+    const selection = elements.get("/audio/Selection-click.mp3");
+    const attack = elements.get("/audio/Sharpener-click.mp3");
+    const lockIn = elements.get("/audio/Lock-IN-sound.mp3");
+    if (!selection || !attack || !lockIn) throw new Error("expected effect media");
+    selection.currentTime = 2;
+    attack.currentTime = 3;
+    lockIn.currentTime = 4;
+
+    director.playSelection();
+    director.playLockIn();
+    director.playAttack("shot-1");
+    director.playAttack("shot-1");
+    director.playAttack("shot-2");
+
+    expect(selection.currentTime).toBe(0);
+    expect(selection.play).toHaveBeenCalledOnce();
+    expect(lockIn.currentTime).toBe(0);
+    expect(lockIn.play).toHaveBeenCalledOnce();
+    expect(attack.currentTime).toBe(0);
+    expect(attack.play).toHaveBeenCalledTimes(2);
+
+    director.setPreferences({ musicMuted: false, sfxMuted: true });
+    director.playSelection();
+    director.playLockIn();
+    director.playAttack("shot-3");
+    expect(selection.play).toHaveBeenCalledOnce();
+    expect(lockIn.play).toHaveBeenCalledOnce();
+    expect(attack.play).toHaveBeenCalledTimes(2);
+  });
+
   it("mutes music and collision effects independently", () => {
     const { director, elements } = audioHarness();
     director.unlock();

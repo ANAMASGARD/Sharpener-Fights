@@ -235,6 +235,7 @@ function SharpenerFighter({
 function DeskScene({
   snapshot,
   cosmetics,
+  sceneDate,
   onShoot,
   onAimPower,
   quality,
@@ -246,6 +247,7 @@ function DeskScene({
 }: {
   snapshot: GameSnapshot;
   cosmetics: MatchCosmetics;
+  sceneDate: Date;
   onShoot: (command: ShotCommand) => void;
   onAimPower: (power: AimPowerState | null) => void;
   quality: RenderQuality;
@@ -267,7 +269,11 @@ function DeskScene({
         onDecline={onQualityDecline}
         onFallback={onQualityFallback}
       />
-      <ClassroomEnvironment snapshot={snapshot} profile={profile} />
+      <ClassroomEnvironment
+        snapshot={snapshot}
+        profile={profile}
+        sceneDate={sceneDate}
+      />
       {snapshot.sharpeners.map((body) => (
         <SharpenerFighter
           key={`${body.player}-${snapshot.roundId}-${interactionEpoch}`}
@@ -300,10 +306,11 @@ export default function MatchCanvas({
   cosmetics: MatchCosmetics;
   onChangeSharpener: () => void;
 }) {
-  const { snapshot, events, error, shoot, reset } = useGameWorker();
-  useGameAudio(events, snapshot);
+  const { snapshot, events, acceptedShotId, error, shoot, reset } = useGameWorker();
+  useGameAudio(events, snapshot, acceptedShotId);
   const [aimPower, setAimPower] = useState<AimPowerState | null>(null);
   const [interactionEpoch, setInteractionEpoch] = useState(0);
+  const [sceneDate] = useState(() => new Date());
   const [webglAvailable] = useState(supportsWebGL);
   const [quality, setQuality] = useState<RenderQuality>(() =>
     initialRenderQuality({
@@ -352,7 +359,11 @@ export default function MatchCanvas({
         data-phase={snapshot?.phase ?? "LOADING"}
         data-quality={quality}
       >
-        <StaticClassroom snapshot={snapshot} cosmetics={cosmetics} />
+        <StaticClassroom
+          snapshot={snapshot}
+          cosmetics={cosmetics}
+          sceneDate={sceneDate}
+        />
         {webglAvailable && (
           <Canvas
             className={styles["arena-canvas"]}
@@ -386,6 +397,7 @@ export default function MatchCanvas({
               <DeskScene
                 snapshot={snapshot}
                 cosmetics={cosmetics}
+                sceneDate={sceneDate}
                 onShoot={shoot}
                 onAimPower={setAimPower}
                 quality={quality}

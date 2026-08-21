@@ -3,13 +3,9 @@
 import { RoundedBox } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
-import {
-  CanvasTexture,
-  LinearFilter,
-  SRGBColorSpace,
-} from "three";
 import type { GameSnapshot } from "@sharpener/protocol";
 import { PHYSICS } from "@sharpener/game-core";
+import { createScoreTexture } from "./classroom-board-texture";
 import {
   createPlasterSurface,
   createTileSurface,
@@ -17,76 +13,8 @@ import {
   setSurfaceAnisotropy,
   type SurfaceTextureSet,
 } from "./classroom-materials";
+import { ClassroomProps, NO_RAYCAST } from "./classroom-props";
 import type { RenderProfile } from "./render-quality";
-
-function createScoreTexture(
-  roundId: number,
-  turnId: number,
-  scoreZero: number,
-  scoreOne: number,
-) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 420;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas textures are unavailable");
-
-  const gradient = context.createLinearGradient(0, 0, 1024, 420);
-  gradient.addColorStop(0, "#101b1b");
-  gradient.addColorStop(0.5, "#182827");
-  gradient.addColorStop(1, "#0d1717");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 1024, 420);
-
-  context.globalAlpha = 0.16;
-  context.strokeStyle = "#d9e2d1";
-  context.lineWidth = 2;
-  for (let index = 0; index < 34; index += 1) {
-    const y = 20 + ((index * 73) % 380);
-    context.beginPath();
-    context.moveTo((index * 97) % 280, y);
-    context.lineTo(680 + ((index * 43) % 330), y + (index % 3) - 1);
-    context.stroke();
-  }
-  context.globalAlpha = 1;
-
-  context.textAlign = "center";
-  context.fillStyle = "#f3edda";
-  context.font = "700 62px Georgia, serif";
-  context.fillText("SHARPENER FIGHTS", 512, 86);
-  context.fillStyle = "#d6c56f";
-  context.font = "700 28px Courier New, monospace";
-  context.fillText(`ROUND ${roundId}  ·  BEST OF FIVE`, 512, 130);
-
-  context.textAlign = "left";
-  context.fillStyle = "#f2e9d5";
-  context.font = "700 38px Courier New, monospace";
-  context.fillText("ORANGE", 120, 226);
-  context.fillText("BLUE", 120, 304);
-  context.fillStyle = "#ee9c54";
-  context.font = "700 52px Courier New, monospace";
-  context.fillText(String(scoreZero), 390, 229);
-  context.fillStyle = "#65bfd1";
-  context.fillText(String(scoreOne), 390, 307);
-
-  context.strokeStyle = "rgba(242, 233, 213, 0.35)";
-  context.lineWidth = 3;
-  context.beginPath();
-  context.moveTo(500, 175);
-  context.lineTo(500, 330);
-  context.stroke();
-  context.fillStyle = "#f2e9d5";
-  context.font = "600 27px Courier New, monospace";
-  context.fillText("TURN", 566, 215);
-  context.font = "700 52px Courier New, monospace";
-  context.fillText(String(turnId), 566, 282);
-
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.minFilter = LinearFilter;
-  texture.magFilter = LinearFilter;
-  return texture;
-}
 
 // These three deterministic surfaces are immutable apart from sampling quality.
 // A module-owned cache keeps abandoned React renders from orphaning GPU resources.
@@ -114,32 +42,42 @@ function useSurfaceTextureSet(
   return surface;
 }
 
-function Chalkboard({ snapshot }: { snapshot: GameSnapshot }) {
+function Chalkboard({
+  snapshot,
+  sceneDate,
+}: {
+  snapshot: GameSnapshot;
+  sceneDate: Date;
+}) {
   const roundId = snapshot.roundId;
   const turnId = snapshot.turnId;
   const scoreZero = snapshot.scores[0];
   const scoreOne = snapshot.scores[1];
   const texture = useMemo(
-    () => createScoreTexture(roundId, turnId, scoreZero, scoreOne),
-    [roundId, scoreOne, scoreZero, turnId],
+    () => createScoreTexture({ roundId, turnId, scoreZero, scoreOne, sceneDate }),
+    [roundId, sceneDate, scoreOne, scoreZero, turnId],
   );
   useEffect(() => () => texture.dispose(), [texture]);
 
   return (
     <group position={[0, 0.61, -1.11]}>
-      <mesh position={[0, 0, -0.012]} castShadow>
+      <mesh position={[0, 0, -0.012]} castShadow raycast={NO_RAYCAST}>
         <boxGeometry args={[1.28, 0.56, 0.045]} />
         <meshStandardMaterial color="#3f2a1c" roughness={0.82} />
       </mesh>
-      <mesh position={[0, 0, 0.016]}>
+      <mesh position={[0, 0, 0.016]} raycast={NO_RAYCAST}>
         <planeGeometry args={[1.18, 0.46]} />
         <meshStandardMaterial map={texture} roughness={0.96} />
       </mesh>
-      <mesh position={[0, -0.31, 0.04]} castShadow>
+      <mesh position={[0, -0.31, 0.04]} castShadow raycast={NO_RAYCAST}>
         <boxGeometry args={[1.24, 0.035, 0.1]} />
         <meshStandardMaterial color="#553824" roughness={0.75} />
       </mesh>
-      <mesh position={[0.34, -0.277, 0.085]} rotation={[0, 0, 0.03]}>
+      <mesh
+        position={[0.34, -0.277, 0.085]}
+        rotation={[0, 0, 0.03]}
+        raycast={NO_RAYCAST}
+      >
         <boxGeometry args={[0.12, 0.017, 0.018]} />
         <meshStandardMaterial color="#e8dfc8" roughness={0.9} />
       </mesh>
@@ -147,8 +85,7 @@ function Chalkboard({ snapshot }: { snapshot: GameSnapshot }) {
   );
 }
 
-function SchoolDesk({ anisotropy }: { anisotropy: number }) {
-  const wood = useSurfaceTextureSet(createWoodSurface, anisotropy);
+function SchoolDesk({ wood }: { wood: SurfaceTextureSet }) {
   const { x, y, z } = PHYSICS.tableHalfExtents;
 
   return (
@@ -160,6 +97,7 @@ function SchoolDesk({ anisotropy }: { anisotropy: number }) {
         position={[0, -y - 0.016, 0]}
         castShadow
         receiveShadow
+        raycast={NO_RAYCAST}
       >
         <meshStandardMaterial color="#3e1d10" roughness={0.72} />
       </RoundedBox>
@@ -170,6 +108,7 @@ function SchoolDesk({ anisotropy }: { anisotropy: number }) {
         position={[0, -y + 0.001, 0]}
         castShadow
         receiveShadow
+        raycast={NO_RAYCAST}
       >
         <meshPhysicalMaterial
           color={wood ? "#ffffff" : "#b76f34"}
@@ -187,11 +126,19 @@ function SchoolDesk({ anisotropy }: { anisotropy: number }) {
       {[-0.34, 0.34].flatMap((legX) =>
         [-0.53, 0.53].map((legZ) => (
           <group key={`${legX}:${legZ}`} position={[legX, -0.39, legZ]}>
-            <mesh castShadow rotation={[legZ > 0 ? -0.06 : 0.06, 0, legX > 0 ? -0.04 : 0.04]}>
+            <mesh
+              castShadow
+              rotation={[legZ > 0 ? -0.06 : 0.06, 0, legX > 0 ? -0.04 : 0.04]}
+              raycast={NO_RAYCAST}
+            >
               <boxGeometry args={[0.045, 0.69, 0.045]} />
               <meshStandardMaterial color="#242728" roughness={0.42} metalness={0.78} />
             </mesh>
-            <mesh position={[0, -0.35, legZ > 0 ? 0.04 : -0.04]} castShadow>
+            <mesh
+              position={[0, -0.35, legZ > 0 ? 0.04 : -0.04]}
+              castShadow
+              raycast={NO_RAYCAST}
+            >
               <boxGeometry args={[0.085, 0.025, 0.14]} />
               <meshStandardMaterial color="#17191a" roughness={0.58} metalness={0.62} />
             </mesh>
@@ -207,7 +154,7 @@ function SchoolWall({ anisotropy }: { anisotropy: number }) {
 
   return (
     <group>
-      <mesh position={[0, 0.25, -1.16]} receiveShadow>
+      <mesh position={[0, 0.25, -1.16]} receiveShadow raycast={NO_RAYCAST}>
         <planeGeometry args={[4.4, 2.6, 32, 18]} />
         <meshStandardMaterial
           color={plaster ? "#ffffff" : "#9da58f"}
@@ -224,6 +171,7 @@ function SchoolWall({ anisotropy }: { anisotropy: number }) {
         smoothness={3}
         position={[0, -0.715, -1.115]}
         receiveShadow
+        raycast={NO_RAYCAST}
       >
         <meshStandardMaterial color="#747765" roughness={0.78} />
       </RoundedBox>
@@ -239,6 +187,7 @@ function TileFloor({ anisotropy }: { anisotropy: number }) {
       position={[0, -0.76, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
       receiveShadow
+      raycast={NO_RAYCAST}
     >
       <planeGeometry args={[5, 5, 48, 48]} />
       <meshPhysicalMaterial
@@ -246,10 +195,10 @@ function TileFloor({ anisotropy }: { anisotropy: number }) {
         map={tile?.albedo ?? null}
         roughnessMap={tile?.roughness ?? null}
         bumpMap={tile?.bump ?? null}
-        bumpScale={0.0045}
-        roughness={0.88}
-        clearcoat={0.08}
-        clearcoatRoughness={0.58}
+        bumpScale={0.0032}
+        roughness={0.62}
+        clearcoat={0.22}
+        clearcoatRoughness={0.42}
       />
     </mesh>
   );
@@ -258,25 +207,28 @@ function TileFloor({ anisotropy }: { anisotropy: number }) {
 export function ClassroomEnvironment({
   snapshot,
   profile,
+  sceneDate,
 }: {
   snapshot: GameSnapshot;
   profile: RenderProfile;
+  sceneDate: Date;
 }) {
   const maximumAnisotropy = useThree((state) =>
     state.gl.capabilities.getMaxAnisotropy(),
   );
   const anisotropy = Math.min(profile.anisotropy, maximumAnisotropy);
+  const wood = useSurfaceTextureSet(createWoodSurface, anisotropy);
 
   return (
     <>
-      <color attach="background" args={["#9da58f"]} />
-      <fog attach="fog" args={["#9da58f", 3.2, 6]} />
-      <hemisphereLight args={["#fff4dc", "#605f59", 1.15]} />
+      <color attach="background" args={["#a4aa92"]} />
+      <fog attach="fog" args={["#a4aa92", 3.4, 6.2]} />
+      <hemisphereLight args={["#fff0cf", "#59615f", 1.08]} />
       <directionalLight
         key={profile.shadowMapSize}
         castShadow
         position={[-1.75, 3.1, 1.65]}
-        intensity={2.85}
+        intensity={2.72}
         shadow-mapSize-width={profile.shadowMapSize}
         shadow-mapSize-height={profile.shadowMapSize}
         shadow-camera-left={-1.5}
@@ -289,8 +241,12 @@ export function ClassroomEnvironment({
       />
 
       <SchoolWall anisotropy={anisotropy} />
-      <Chalkboard snapshot={snapshot} />
-      <SchoolDesk anisotropy={anisotropy} />
+      <Chalkboard snapshot={snapshot} sceneDate={sceneDate} />
+      <ClassroomProps
+        wood={wood}
+        shadowLevel={profile.decorativeShadowLevel}
+      />
+      <SchoolDesk wood={wood} />
       <TileFloor anisotropy={anisotropy} />
     </>
   );

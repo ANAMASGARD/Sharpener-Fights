@@ -16,8 +16,9 @@
   border-bottom: 0.55rem solid #777c70;
   background:
     radial-gradient(circle at 20% 16%, rgba(255, 255, 255, 0.19), transparent 24%),
+    linear-gradient(180deg, #bdb79f 0 34%, #7f8972 35% 100%),
     linear-gradient(92deg, transparent 0 34%, rgba(67, 77, 66, 0.06) 35% 35.25%, transparent 36%),
-    #9da791;
+    #8f9880;
   box-shadow: inset 0 -35px 55px rgba(42, 49, 42, 0.14);
 }
 
@@ -56,7 +57,22 @@
   font: 400 clamp(1.65rem, 3.5vw, 3.2rem)/0.95 var(--display);
   letter-spacing: 0.095em;
   text-transform: uppercase;
-  text-shadow: 1px 1px #0b1514;
+  text-shadow:
+    -1px 0 rgba(255, 255, 255, 0.22),
+    1px 1px #0b1514,
+    0 0 5px rgba(239, 234, 214, 0.2);
+  filter: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeComposite in='SourceGraphic' operator='in'/%3E%3C/filter%3E%3C/svg%3E%23n");
+}
+
+.fallback-board-date {
+  position: absolute;
+  z-index: 2;
+  top: 0.72rem;
+  right: 1rem;
+  color: rgba(239, 233, 213, 0.9);
+  font: 700 clamp(0.48rem, 0.85vw, 0.72rem)/1 var(--typewriter);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 4px rgba(238, 232, 212, 0.2);
 }
 
 .fallback-board-meta {
@@ -146,15 +162,153 @@
 .fallback-tile-floor {
   position: absolute;
   inset: 38% -18% -22%;
-  background-color: #d8d6ca;
+  background-color: #d2cbb7;
   background-image:
-    linear-gradient(rgba(74, 76, 71, 0.55) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(74, 76, 71, 0.55) 2px, transparent 2px),
-    linear-gradient(135deg, transparent 0 48%, rgba(70, 72, 67, 0.1) 49% 51%, transparent 52%);
-  background-size: 7.5rem 7.5rem, 7.5rem 7.5rem, 15rem 15rem;
-  box-shadow: inset 0 38px 50px rgba(61, 64, 57, 0.18);
+    linear-gradient(rgba(73, 70, 63, 0.58) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(73, 70, 63, 0.58) 2px, transparent 2px),
+    radial-gradient(ellipse at 34% 28%, rgba(255, 250, 227, 0.42), transparent 19%),
+    repeating-linear-gradient(128deg, transparent 0 36px, rgba(105, 99, 87, 0.1) 38px 39px, transparent 41px 76px),
+    linear-gradient(135deg, #ded7c3, #c6beaa 52%, #ddd5c0);
+  background-size: 7.5rem 7.5rem, 7.5rem 7.5rem, 32rem 22rem, 15rem 15rem, 100% 100%;
+  box-shadow:
+    inset 0 38px 50px rgba(61, 64, 57, 0.18),
+    inset 0 -80px 110px rgba(255, 251, 232, 0.18);
   transform: rotateX(57deg);
   transform-origin: center top;
+}
+
+.fallback-perimeter {
+  position: absolute;
+  z-index: 2;
+  inset: 35% 0 0;
+  pointer-events: none;
+}
+
+.fallback-side-desk {
+  position: absolute;
+  width: 27%;
+  height: 24%;
+  filter: drop-shadow(9px 12px 7px rgba(33, 30, 25, 0.3));
+}
+
+.fallback-side-desk-rear-left { top: 2%; left: -5%; transform: rotate(-2deg); }
+.fallback-side-desk-rear-right { top: 2%; right: -5%; transform: rotate(2deg); }
+.fallback-side-desk-front-left { bottom: 2%; left: -10%; transform: rotate(2deg); }
+.fallback-side-desk-front-right { right: -10%; bottom: 2%; transform: rotate(-2deg); }
+
+.fallback-side-top,
+.fallback-side-seat {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border: 3px solid #5b331d;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(177deg, transparent 0 13px, rgba(83, 39, 17, 0.18) 14px 15px),
+    linear-gradient(145deg, #b86e34, #d1944f 45%, #8d4c24);
+  box-shadow: inset 0 2px rgba(255, 230, 181, 0.25);
+}
+
+.fallback-side-top { top: 0; height: 40%; }
+.fallback-side-seat { bottom: 6%; left: 8%; width: 84%; height: 21%; }
+
+.fallback-side-desk i {
+  position: absolute;
+  top: 34%;
+  width: 0.55rem;
+  height: 66%;
+  background: linear-gradient(90deg, #171a19, #4d504e 48%, #171918);
+}
+
+.fallback-side-desk i:nth-of-type(1) { left: 8%; transform: rotate(4deg); }
+.fallback-side-desk i:nth-of-type(2) { left: 26%; transform: rotate(-3deg); }
+.fallback-side-desk i:nth-of-type(3) { right: 26%; transform: rotate(3deg); }
+.fallback-side-desk i:nth-of-type(4) { right: 8%; transform: rotate(-4deg); }
+
+.fallback-bag {
+  position: absolute;
+  width: clamp(3.4rem, 6vw, 6rem);
+  aspect-ratio: 0.82;
+  border: 3px solid #202729;
+  border-radius: 33% 33% 20% 20%;
+  box-shadow:
+    inset 0 -1.3rem rgba(0, 0, 0, 0.13),
+    9px 13px 12px rgba(34, 29, 25, 0.35);
+}
+
+.fallback-bag::before {
+  position: absolute;
+  inset: 48% 11% 11%;
+  border: 2px solid rgba(20, 25, 27, 0.55);
+  border-radius: 18%;
+  content: "";
+}
+
+.fallback-bag::after {
+  position: absolute;
+  top: -16%;
+  left: 30%;
+  width: 40%;
+  height: 25%;
+  border: 4px solid #252b2e;
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0;
+  content: "";
+}
+
+.fallback-bag-navy { top: 27%; right: 14%; background: #2a3c59; transform: rotate(-7deg); }
+.fallback-bag-maroon { right: 5%; bottom: 18%; background: #713f42; transform: rotate(8deg); }
+
+.fallback-bottle {
+  position: absolute;
+  width: clamp(0.85rem, 1.5vw, 1.45rem);
+  height: clamp(3.2rem, 6vw, 5.5rem);
+  border: 2px solid rgba(32, 46, 48, 0.65);
+  border-radius: 35% 35% 18% 18%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.38), #4b8288 42%, #285861);
+  box-shadow: 5px 7px 8px rgba(30, 29, 25, 0.3);
+}
+
+.fallback-bottle::before {
+  position: absolute;
+  top: -10%;
+  left: 16%;
+  width: 68%;
+  height: 12%;
+  border-radius: 3px;
+  background: #293c47;
+  content: "";
+}
+
+.fallback-bottle-left { top: 6%; left: 8%; }
+.fallback-bottle-right { top: 7%; right: 10%; }
+
+.fallback-lunchbox {
+  position: absolute;
+  width: clamp(3rem, 5vw, 5rem);
+  height: clamp(1.7rem, 2.8vw, 2.7rem);
+  border: 2px solid #374245;
+  border-radius: 7px;
+  box-shadow:
+    inset 0 4px rgba(255, 255, 255, 0.15),
+    6px 8px 9px rgba(35, 31, 26, 0.27);
+}
+
+.fallback-lunchbox-left { top: 10%; left: 15%; background: #425a7b; }
+.fallback-lunchbox-right { top: 10%; right: 16%; background: #71814c; }
+
+.fallback-dustbin {
+  position: absolute;
+  top: 32%;
+  left: 4%;
+  width: clamp(2.6rem, 4.5vw, 4.4rem);
+  height: clamp(4rem, 7vw, 7rem);
+  border: 3px solid #2f3b31;
+  border-radius: 9% 9% 22% 22%;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 10px, rgba(28, 42, 30, 0.18) 11px 12px),
+    linear-gradient(90deg, #314431, #607056 46%, #354738);
+  box-shadow: 8px 12px 10px rgba(30, 29, 25, 0.33);
 }
 
 .fallback-desk-legs {

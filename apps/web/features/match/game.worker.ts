@@ -14,6 +14,7 @@ type IncomingMessage =
 type WorkerMessage =
   | { type: "READY"; snapshot: GameSnapshot }
   | { type: "SNAPSHOT"; snapshot: GameSnapshot; events: GameEvent[] }
+  | { type: "COMMAND_ACCEPTED"; shotId: string }
   | { type: "COMMAND_REJECTED"; reason: string }
   | { type: "ERROR"; message: string };
 
@@ -64,7 +65,9 @@ worker.onmessage = (event: MessageEvent<IncomingMessage>) => {
   }
 
   const result = simulation.applyCommand(event.data.command);
-  if (!result.accepted) {
+  if (result.accepted) {
+    post({ type: "COMMAND_ACCEPTED", shotId: event.data.command.shotId });
+  } else {
     post({ type: "COMMAND_REJECTED", reason: result.reason });
   }
 };

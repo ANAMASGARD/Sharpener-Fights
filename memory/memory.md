@@ -50,11 +50,11 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 
 ### Browser experience
 
-- Stationery-case selection screen with six colors, persistent selection, a CSS-rendered realistic preview, and a lock-in transition.
-- Procedural 3D sharpener including body, inlet, blade, screw, underside, PBR materials, and active-player highlight.
+- Stationery-case selection screen with six colors, persistent selection, and a WebGL-free CSS 3D preview. The preview is a compact classic single-hole sharpener with a prominent dark inlet, low molded shoulder, short mounted blade, distinct screw, modeled underside, and cosmetic-driven materials. It automatically rotates 360 degrees around the horizontal axis over sixteen seconds; pointer dragging rotates both axes, arrow keys provide keyboard control, and automatic motion pauses during inspection before resuming. Reduced-motion mode keeps manual inspection but disables automatic spin. The one-WebGL-context resilience rule remains intact.
+- Procedural 3D match sharpener uses the same shared body-dominant proportions and identity hierarchy as the selector: inlet tunnel/bezel, short blade/channel, screw, underside, PBR materials, and active-player highlight.
 - Full 3D classroom: blackboard scoreboard, pale wall, tiled floor, generated wood grain/scratches, long desk, visible legs, lighting, shadow, and fog.
 - Unified mouse/touch/stylus drag path, aim guideline, vertical power meter, timer ticket, a persistent top-right sound menu, reset/replay, and result cards.
-- Hybrid audio: continuous 50%-volume playground MP3 after the first user gesture; asset-backed sharpener collision; simultaneous bell/winner playback at match end with a seven-second winner cutoff; synthesized flick, wood, scrape, falling, floor, and room cues. Music and SFX mute independently and persist.
+- Hybrid audio: continuous 50%-volume playground MP3 after the first user gesture; supplied selection, Lock In, accepted-attack, and sharpener-collision MP3 effects; simultaneous bell/winner playback at match end with a seven-second winner cutoff; synthesized wood, scrape, falling, floor, and room cues. Music and SFX mute independently and persist.
 - Responsive portrait and landscape presentation with no forced-rotation gate.
 
 ### Feel tuning requested during implementation
@@ -93,16 +93,40 @@ Interactive physics still requires WebGL. The fallback is an honest visual/error
 - Sharpener-to-sharpener contacts use the supplied collision sample. A match win starts the bell and winner effect together once; the winner effect stops after seven seconds.
 - Replaced the small match-over status with a classroom-paper winner report showing winner, final score, rounds, turns, and Play Again.
 
+### Selection, lock-in, and attack-audio pass
+
+- Added deployment copies of `Selection-click.mp3`, `Lock-IN-sound.mp3`, and `Sharpener-click.mp3` under `apps/web/public/audio`; each is owned by the central `GameMediaAudio` controller and is preloaded but never autoplayed.
+- A swatch plays the supplied selection sound only when it changes the cosmetic; Lock In plays the supplied lock sound. Both obey the persisted SFX toggle.
+- A local accepted shot now produces a direct worker `COMMAND_ACCEPTED` response after `game-core` accepts it, so attack audio cannot be overwritten by an empty snapshot. `Sharpener-click.mp3` is deduplicated by `shotId`; the later `SHOT_ACCEPTED` event is therefore safe, and future local online prediction can reuse the same deduplication seam.
+
+### Populated classroom and material-depth pass
+
+- Added four cropped procedural bench/desk clusters around the untouched central arena, plus two school bags, bottles, lunchboxes, and a classroom dustbin. Repeated furniture and accessories use instancing; this pass introduces no GLB or network asset dependency.
+- Made every classroom/environment mesh explicitly non-raycastable. The active sharpener remains the only gesture-start geometry and drag movement still projects onto the mathematical desk plane, so visual decoration cannot intercept aiming.
+- Deepened the deterministic material system with satin marble-look ceramic veining and worn grout, two-tone aged school plaster, warmer late-morning light, and quality-tiered decorative shadows. Existing DPR, central shadows, 50 FPS decline policy, and optional high-tier-only N8AO behavior remain unchanged.
+- Extracted deterministic powder-chalk board rendering and injected one match-load local date formatted manually as `DD/MM/YYYY`; the texture generator never reads current time internally.
+- Brought the no-WebGL DOM classroom to visual parity with simplified perimeter furniture, bags, desk props, dustbin, richer tiles, wall paint, chalk treatment, and the same injected date.
+
+### Classic sharpener identity pass
+
+- Reframed both selector and match render models around one shared appearance contract: short/chunky colored body first, pencil inlet as the strongest recognition cue, short mounted blade second, and one readable screw.
+- Replaced the match body's generic rounded slab with a beveled inlet-cut procedural `ExtrudeGeometry`, a shadowed inlet tunnel/bezel, recessed blade channel, short metal plate, slotted screw, and molded underside. No Rapier dimensions, mass, material, damping, impulse, CCD, rules, worker messages, or camera settings changed.
+- Kept the redesigned match body at `0.049 × 0.023 × 0.035 m` inside the existing `0.050 × 0.024 × 0.036 m` collider: 98% X occupancy and 97.2% Z occupancy prevent an obvious invisible contact shell.
+- Kept all six cosmetics geometry-identical. Five finishes use satin plastic response; Aluminium changes only visual metalness/roughness. Selector color and material still derive from the canonical cosmetic record.
+- Preserved the CSS-only selector, sixteen-second horizontal spin, pointer capture, two-axis manual inspection, arrow-key control, delayed auto-resume, and reduced-motion behavior while replacing the former blade-dominant utility-tool silhouette.
+- Closed the selector at every rotation angle with an independent opaque six-face core inset `0.06rem` behind the decorative skin. The inlet, blade, screw, shoulder, ribs, and underside remain surface details; they no longer determine whether the object looks solid. Edge-on, underside, and end-on captures were checked in all six cosmetics, with Sunflower and Aluminium used as the highest-contrast gap checks.
+
 ## Current verified checkpoint
 
-At the end of the asset-audio and winner-report implementation:
+At the end of the populated-classroom, classic-sharpener, and supplied-effect audio implementation:
 
-- `npm test`: 50 tests passed across 10 files.
+- `npm test`: 56 tests passed across 12 files, including generated-geometry/collider/material contracts plus selector, Lock In, and deduplicated accepted-attack media behavior.
 - `npm run typecheck`: passed for every workspace.
 - `npm run lint`: passed.
 - `npm run build`: passed on Next.js 16.3.1; `/`, `/_not-found`, and `/icon.svg` were generated.
-- `npm run test:e2e`: 8 Chrome journeys passed: selection/shot, portrait usability, supplied-audio/menu persistence, winner audio/report/replay, expired-drag cancellation, reset-drag invalidation, unsupported-N8AO fallback, and forced-no-WebGL fallback.
-- Browser console audit: no errors in the deterministic arena, top-right audio-menu, or winner-report screenshot runs.
+- The focused Chrome audio journey passed: reselect is silent, a real color change plays `Selection-click.mp3` once, Lock In plays `Lock-IN-sound.mp3` once, a valid accepted shot plays `Sharpener-click.mp3` once, and all newly supplied public assets return successfully. Re-run the complete serial Chrome suite in an unrestricted local runner before release; this environment did not complete a final report after its first six green journeys.
+- Deterministic 1440×1000 reduced-motion captures verified the same selector pose and match camera state; the real shot path produced a sharpener contact and normal physical separation while the visible model remained inside and close to its collider footprint.
+- Deterministic 1440×900 low-tier before/after audit: draw calls moved from 57 to 65, visible triangles from about 33,066 to 36,190, median frame time remained 150 ms, and p95 remained 166.7 ms on the same software-rendered Chrome. The run added no console errors or network paths.
 - `git diff --check`: passed.
 
 The unit suite may print a Rapier compatibility initialization deprecation warning; it was non-failing at this checkpoint.

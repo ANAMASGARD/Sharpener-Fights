@@ -11,36 +11,12 @@ import {
   writeStoredCosmetic,
 } from "./cosmetics";
 import { gameAudio } from "./audio";
+import { SharpenerPreview } from "./sharpener-preview";
 
 export type MatchCosmetics = readonly [
   SharpenerCosmeticId,
   SharpenerCosmeticId,
 ];
-
-function SharpenerPreview({ cosmetic }: { cosmetic: SharpenerCosmeticId }) {
-  const colors = getCosmetic(cosmetic);
-  return (
-    <div
-      className={styles["selector-sharpener-wrap"]}
-      style={{
-        "--sharpener-body": colors.body,
-        "--sharpener-edge": colors.edge,
-        "--sharpener-highlight": colors.highlight,
-      } as React.CSSProperties}
-      aria-hidden="true"
-    >
-      <div className={styles["selector-shadow"]} />
-      <div className={styles["selector-sharpener"]}>
-        <div className={styles["selector-pencil-hole"]}><span /></div>
-        <div className={styles["selector-blade"]}>
-          <span className={styles["selector-blade-edge"]} />
-          <span className={styles["selector-screw"]} />
-        </div>
-        <span className={styles["selector-brand"]}>SF</span>
-      </div>
-    </div>
-  );
-}
 
 export function SharpenerSelector({
   onStart,
@@ -58,7 +34,7 @@ export function SharpenerSelector({
   function lockIn() {
     if (closing) return;
     gameAudio.unlock();
-    gameAudio.playUiClick();
+    gameAudio.playLockIn();
     writeStoredCosmetic(window.localStorage, selected);
     const random = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
     const opponent = chooseOpponentCosmetic(selected, random);
@@ -99,7 +75,8 @@ export function SharpenerSelector({
                 className={styles["swatch-button"]}
                 onClick={() => {
                   gameAudio.unlock();
-                  gameAudio.playUiClick();
+                  if (option.id === selected) return;
+                  gameAudio.playSelectionClick();
                   setSelected(option.id);
                 }}
               >

@@ -33,14 +33,27 @@ describe("render quality degradation", () => {
 
   it("keeps N8AO high-tier-only and enforces the DPR and shadow budgets", () => {
     expect(RENDER_PROFILES).toEqual({
-      high: { dpr: 1.5, shadowMapSize: 2048, anisotropy: 8, n8ao: true },
+      high: {
+        dpr: 1.5,
+        shadowMapSize: 2048,
+        anisotropy: 8,
+        n8ao: true,
+        decorativeShadowLevel: "full",
+      },
       balanced: {
         dpr: 1.25,
         shadowMapSize: 1024,
         anisotropy: 4,
         n8ao: false,
+        decorativeShadowLevel: "major",
       },
-      low: { dpr: 1, shadowMapSize: 512, anisotropy: 2, n8ao: false },
+      low: {
+        dpr: 1,
+        shadowMapSize: 512,
+        anisotropy: 2,
+        n8ao: false,
+        decorativeShadowLevel: "none",
+      },
     });
   });
 

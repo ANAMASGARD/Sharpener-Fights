@@ -5,17 +5,31 @@ export type RenderProfile = {
   shadowMapSize: 512 | 1024 | 2048;
   anisotropy: 2 | 4 | 8;
   n8ao: boolean;
+  decorativeShadowLevel: "full" | "major" | "none";
 };
 
 export const RENDER_PROFILES: Record<RenderQuality, RenderProfile> = {
-  high: { dpr: 1.5, shadowMapSize: 2048, anisotropy: 8, n8ao: true },
+  high: {
+    dpr: 1.5,
+    shadowMapSize: 2048,
+    anisotropy: 8,
+    n8ao: true,
+    decorativeShadowLevel: "full",
+  },
   balanced: {
     dpr: 1.25,
     shadowMapSize: 1024,
     anisotropy: 4,
     n8ao: false,
+    decorativeShadowLevel: "major",
   },
-  low: { dpr: 1, shadowMapSize: 512, anisotropy: 2, n8ao: false },
+  low: {
+    dpr: 1,
+    shadowMapSize: 512,
+    anisotropy: 2,
+    n8ao: false,
+    decorativeShadowLevel: "none",
+  },
 };
 
 export function initialRenderQuality({

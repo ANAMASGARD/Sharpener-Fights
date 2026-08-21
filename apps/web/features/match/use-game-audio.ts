@@ -7,12 +7,17 @@ import { gameAudio } from "./audio";
 export function useGameAudio(
   events: readonly GameEvent[],
   snapshot: GameSnapshot | null,
+  acceptedShotId: string | null,
 ) {
   const previousPhase = useRef(snapshot?.phase ?? null);
 
   useEffect(() => {
     gameAudio.handleEvents(events);
   }, [events]);
+
+  useEffect(() => {
+    if (acceptedShotId) gameAudio.playAcceptedAttack(acceptedShotId);
+  }, [acceptedShotId]);
 
   useEffect(() => {
     gameAudio.updateSlide(snapshot);

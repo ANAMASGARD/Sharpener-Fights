@@ -23,13 +23,18 @@ function ignorePlaybackRejection(playback: Promise<void>) {
 }
 
 export class GameMediaAudio {
+  private static readonly MAX_RECENT_ATTACKS = 128;
   private readonly createAudio: (src: string) => MediaElement;
   private readonly schedule: (callback: () => void, delay: number) => () => void;
   private music: MediaElement | null = null;
+  private selection: MediaElement | null = null;
+  private lockIn: MediaElement | null = null;
+  private attack: MediaElement | null = null;
   private collision: MediaElement | null = null;
   private bell: MediaElement | null = null;
   private winner: MediaElement | null = null;
   private cancelWinnerStop: (() => void) | null = null;
+  private readonly recentAttackShotIds = new Set<string>();
   private victoryActive = false;
   private unlocked = false;
   private preferences: AudioPreferences = {
@@ -57,6 +62,9 @@ export class GameMediaAudio {
       ignorePlaybackRejection(this.music.play());
     }
     if (preferences.sfxMuted) {
+      this.selection?.pause();
+      this.lockIn?.pause();
+      this.attack?.pause();
       this.collision?.pause();
       this.resetVictory();
     }
@@ -69,6 +77,15 @@ export class GameMediaAudio {
     this.music.loop = true;
     this.music.preload = "auto";
     this.music.volume = 0.5;
+    this.selection = this.createAudio("/audio/Selection-click.mp3");
+    this.selection.preload = "auto";
+    this.selection.volume = 0.56;
+    this.lockIn = this.createAudio("/audio/Lock-IN-sound.mp3");
+    this.lockIn.preload = "auto";
+    this.lockIn.volume = 0.64;
+    this.attack = this.createAudio("/audio/Sharpener-click.mp3");
+    this.attack.preload = "auto";
+    this.attack.volume = 0.72;
     this.collision = this.createAudio("/audio/sharpener-collision.mp3");
     this.collision.preload = "auto";
     this.bell = this.createAudio("/audio/School-Bell.mp3");
@@ -80,6 +97,32 @@ export class GameMediaAudio {
     if (!this.preferences.musicMuted) {
       ignorePlaybackRejection(this.music.play());
     }
+  }
+
+  playSelection() {
+    if (!this.selection || this.preferences.sfxMuted) return;
+    this.selection.currentTime = 0;
+    ignorePlaybackRejection(this.selection.play());
+  }
+
+  playLockIn() {
+    if (!this.lockIn || this.preferences.sfxMuted) return;
+    this.lockIn.currentTime = 0;
+    ignorePlaybackRejection(this.lockIn.play());
+  }
+
+  playAttack(shotId: string) {
+    if (this.recentAttackShotIds.has(shotId)) return;
+    this.recentAttackShotIds.add(shotId);
+    if (
+      this.recentAttackShotIds.size > GameMediaAudio.MAX_RECENT_ATTACKS
+    ) {
+      const oldest = this.recentAttackShotIds.values().next().value;
+      if (oldest !== undefined) this.recentAttackShotIds.delete(oldest);
+    }
+    if (!this.attack || this.preferences.sfxMuted) return;
+    this.attack.currentTime = 0;
+    ignorePlaybackRejection(this.attack.play());
   }
 
   playCollision(strength01: number) {

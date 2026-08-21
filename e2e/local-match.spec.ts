@@ -35,6 +35,131 @@ async function enterMatch(
   await expect(page.getByText(/Orange · 1[45]/)).toBeVisible();
 }
 
+test("presents a recognizable single-hole sharpener with horizontal automatic rotation", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const preview = page.locator('[data-part="sharpener-preview"]');
+  const spinner = page.locator('[data-part="rotating-sharpener"]');
+  await expect(preview.locator("canvas")).toHaveCount(0);
+  await expect(spinner).toBeVisible();
+  await expect(page.locator('[data-part="sharpener-top-face"]')).toHaveCount(1);
+  await expect(page.locator('[data-part="sharpener-bottom-face"]')).toHaveCount(1);
+  await expect(page.locator('[data-part="sharpener-side"]')).toHaveCount(4);
+  await expect(page.locator('[data-part="sharpener-molded-shoulder"]')).toHaveCount(1);
+  await expect(page.locator('[data-part="sharpener-end-hole"]')).toHaveCount(1);
+  await expect(page.locator('[data-part="sharpener-blade-channel"]')).toHaveCount(1);
+  await expect(page.locator('[data-part="sharpener-blade-plate"]')).toHaveCount(1);
+  await expect(page.locator('[data-part="sharpener-screw"]')).toHaveCount(1);
+  await expect(preview.locator('[data-finish="plastic"]')).toHaveCount(1);
+  await expect(spinner).toHaveAttribute("data-axis", "horizontal");
+  await expect(spinner).toHaveCSS("animation-duration", "16s");
+  await expect(spinner).toHaveCSS("animation-iteration-count", "infinite");
+
+  await page.getByRole("radio", { name: "Aluminium" }).click();
+  await expect(preview.locator('[data-finish="aluminium"]')).toHaveCount(1);
+});
+
+test("keeps the enclosed selector shell opaque across every cosmetic and extreme pose", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const preview = page.locator('[data-part="interactive-sharpener-preview"]');
+  const shell = page.locator('[data-part="enclosed-sharpener-body"]');
+  const faces = shell.locator('[data-part="enclosed-sharpener-face"]');
+  await expect(shell).toHaveCount(1);
+  await expect(faces).toHaveCount(6);
+
+  const cosmetics = [
+    "Ember Red",
+    "Ocean Blue",
+    "Sunflower",
+    "Classroom Green",
+    "Graphite",
+    "Aluminium",
+  ];
+  const poses = [
+    { x: -18, y: -38 },
+    { x: 88, y: 0 },
+    { x: 178, y: 24 },
+    { x: -72, y: 90 },
+  ];
+
+  for (const cosmetic of cosmetics) {
+    await page.getByRole("radio", { name: cosmetic, exact: true }).click();
+    for (const pose of poses) {
+      await preview.evaluate((element, nextPose) => {
+        const node = element as HTMLElement;
+        node.style.setProperty("--preview-rotate-x", `${nextPose.x}deg`);
+        node.style.setProperty("--preview-rotate-y", `${nextPose.y}deg`);
+      }, pose);
+
+      const everyFaceIsOpaque = await faces.evaluateAll((elements) =>
+        elements.every((element) => {
+          const style = getComputedStyle(element);
+          return (
+            style.backgroundImage !== "none" ||
+            style.backgroundColor !== "rgba(0, 0, 0, 0)"
+          );
+        }),
+      );
+      expect(everyFaceIsOpaque).toBe(true);
+    }
+  }
+});
+
+test("lets the player rotate the preview across both axes", async ({ page }) => {
+  await page.goto("/");
+
+  const preview = page.locator('[data-part="interactive-sharpener-preview"]');
+  const spinner = page.locator('[data-part="rotating-sharpener"]');
+  const initialRotation = await preview.evaluate((element) => ({
+    x: element.style.getPropertyValue("--preview-rotate-x"),
+    y: element.style.getPropertyValue("--preview-rotate-y"),
+  }));
+  const bounds = await preview.boundingBox();
+  expect(bounds).not.toBeNull();
+  if (!bounds) return;
+
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await expect(preview).toHaveAttribute("data-dragging", "true");
+  await expect(preview).toHaveAttribute("data-auto-paused", "true");
+  await expect(spinner).toHaveCSS("animation-play-state", "paused");
+  await page.mouse.move(
+    bounds.x + bounds.width / 2 + 52,
+    bounds.y + bounds.height / 2 + 38,
+    { steps: 4 },
+  );
+
+  const draggedRotation = await preview.evaluate((element) => ({
+    x: element.style.getPropertyValue("--preview-rotate-x"),
+    y: element.style.getPropertyValue("--preview-rotate-y"),
+  }));
+  expect(draggedRotation.x).not.toBe(initialRotation.x);
+  expect(draggedRotation.y).not.toBe(initialRotation.y);
+
+  await page.mouse.up();
+  await expect(preview).toHaveAttribute("data-dragging", "false");
+  await expect(preview).toHaveAttribute("data-auto-paused", "false", {
+    timeout: 1_500,
+  });
+  await expect(spinner).toHaveCSS("animation-play-state", "running");
+});
+
+test("holds the selector at a dimensional pose when reduced motion is requested", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const spinner = page.locator('[data-part="rotating-sharpener"]');
+  await expect(spinner).toHaveCSS("animation-name", "none");
+  await expect(spinner).not.toHaveCSS("transform", "none");
+});
+
 test("selects a fair cosmetic and releases a pointer drag as a shot", async ({
   page,
 }) => {
@@ -77,10 +202,58 @@ test("keeps the full match interface usable in portrait without a rotate gate", 
   await expect(page.getByText(/rotate your phone/i)).toHaveCount(0);
 });
 
+test("keeps classroom decoration outside the aiming interaction path", async ({
+  page,
+}) => {
+  await enterMatch(page);
+
+  const canvas = page.locator("canvas");
+  const arena = await canvas.boundingBox();
+  expect(arena).not.toBeNull();
+  if (!arena) return;
+
+  await page.mouse.click(
+    arena.x + arena.width * 0.9,
+    arena.y + arena.height * 0.58,
+  );
+  await expect(page.locator("[data-phase='AIMING']")).toBeVisible();
+  await expect(page.locator('[data-part="power-meter"]')).toHaveAttribute(
+    "aria-label",
+    "Shot power 0%",
+  );
+
+  const startX = arena.x + arena.width / 2;
+  const startY = arena.y + arena.height * 0.671;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(
+    arena.x + arena.width * 0.87,
+    arena.y + arena.height * 0.82,
+    { steps: 10 },
+  );
+  await page.mouse.up();
+
+  await expect(
+    page.locator("[data-phase='MOVING'], [data-phase='SETTLING']"),
+  ).toBeVisible({ timeout: 2_000 });
+});
+
 test("plays the supplied background track and keeps independent audio controls across screens", async ({
   page,
 }) => {
   await page.addInitScript(() => {
+    const originalMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = (query: string) => {
+      const result = originalMatchMedia(query);
+      if (query !== "(pointer: coarse)") return result;
+      return new Proxy(result, {
+        get(target, property) {
+          if (property === "matches") return true;
+          const value = Reflect.get(target, property, target);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    };
     const playedAudio: string[] = [];
     Object.defineProperty(window, "__sharpenerPlayedAudio", {
       value: playedAudio,
@@ -101,19 +274,56 @@ test("plays the supplied background track and keeps independent audio controls a
     ),
   ).toContain("/audio/PlayGround-BG.mp3");
 
+  const playCount = (asset: string) =>
+    page.evaluate((path) =>
+      (window as typeof window & { __sharpenerPlayedAudio: string[] })
+        .__sharpenerPlayedAudio.filter((played) => played === path).length,
+    asset);
+
+  await page.getByRole("radio", { name: "Ember Red" }).click();
+  expect(await playCount("/audio/Selection-click.mp3")).toBe(0);
+  await page.getByRole("radio", { name: "Ocean Blue" }).click();
+  await expect.poll(() => playCount("/audio/Selection-click.mp3")).toBe(1);
+  await page.getByRole("radio", { name: "Ocean Blue" }).click();
+  expect(await playCount("/audio/Selection-click.mp3")).toBe(1);
+
+  await page.getByRole("button", { name: "Lock in" }).click();
+  await expect.poll(() => playCount("/audio/Lock-IN-sound.mp3")).toBe(1);
+  await expect(page.locator("[data-phase='AIMING']")).toBeVisible();
+
   await page.getByRole("button", { name: "Mute background music" }).click();
   await page.getByRole("button", { name: "Mute sound effects" }).click();
   await expect(page.getByRole("button", { name: "Unmute background music" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Unmute sound effects" })).toBeVisible();
 
-  await page.getByRole("radio", { name: "Ocean Blue" }).click();
-  await page.getByRole("button", { name: "Lock in" }).click();
-  await expect(page.locator("[data-phase='AIMING']")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Unmute background music" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Unmute sound effects" })).toBeVisible();
+  await page.getByRole("button", { name: "Unmute sound effects" }).click();
+  await expect(page.getByRole("button", { name: "Mute sound effects" })).toBeVisible();
+  await page.getByRole("button", { name: "Reset" }).click();
+  await expect(page.getByText(/Orange · 1[45]/)).toBeVisible();
+  const canvas = page.locator("canvas");
+  const arena = await canvas.boundingBox();
+  expect(arena).not.toBeNull();
+  if (!arena) return;
+  const startX = arena.x + arena.width / 2;
+  const startY = arena.y + arena.height * 0.671;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(
+    arena.x + arena.width * 0.87,
+    arena.y + arena.height * 0.82,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await expect(
+    page.locator("[data-phase='MOVING'], [data-phase='SETTLING']"),
+  ).toBeVisible({ timeout: 2_000 });
+  await expect.poll(() => playCount("/audio/Sharpener-click.mp3")).toBe(1);
 
   for (const asset of [
     "PlayGround-BG.mp3",
+    "Selection-click.mp3",
+    "Lock-IN-sound.mp3",
+    "Sharpener-click.mp3",
     "School-Bell.mp3",
     "Winner-Effect.mp3",
     "sharpener-collision.mp3",
@@ -344,5 +554,9 @@ test("shows the complete classroom instead of a blank screen when WebGL is unava
   await expect(page.locator('[data-part="classroom-blackboard"]')).toBeVisible();
   await expect(page.locator('[data-part="classroom-floor"]')).toBeVisible();
   await expect(page.locator('[data-part="classroom-desk"]')).toBeVisible();
+  await expect(page.locator('[data-part="classroom-perimeter"]')).toBeVisible();
+  await expect(page.locator('[data-part="classroom-date"]')).toHaveText(
+    /^\d{2}\/\d{2}\/\d{4}$/,
+  );
   await expect(page.getByRole("status", { name: "3D unavailable" })).toBeVisible();
 });

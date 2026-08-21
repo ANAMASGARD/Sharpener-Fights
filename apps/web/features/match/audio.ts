@@ -8,10 +8,12 @@ export type AudioCueName =
   | "floor-thud"
   | "fall-whoosh";
 
-export type AudioCue = {
-  cue: AudioCueName;
-  strength01: number;
-};
+export type AudioCue =
+  | { cue: "flick"; strength01: number; shotId: string }
+  | {
+      cue: Exclude<AudioCueName, "flick">;
+      strength01: number;
+    };
 
 export type AudioPreferences = {
   sfxMuted: boolean;
@@ -28,7 +30,7 @@ type AudioStorage = Pick<Storage, "getItem" | "setItem">;
 
 export function eventToAudioCue(event: GameEvent): AudioCue | null {
   if (event.type === "SHOT_ACCEPTED") {
-    return { cue: "flick", strength01: 1 };
+    return { cue: "flick", strength01: 1, shotId: event.shotId };
   }
   if (event.type === "FALL_STARTED") {
     return { cue: "fall-whoosh", strength01: 1 };
@@ -147,6 +149,22 @@ class GameAudioDirector {
     this.tone(560, 0.035, 0.035, "triangle", 760);
   }
 
+  playSelectionClick() {
+    this.media.playSelection();
+  }
+
+  playLockIn() {
+    this.media.playLockIn();
+  }
+
+  playPredictedAttack(shotId: string) {
+    this.media.playAttack(shotId);
+  }
+
+  playAcceptedAttack(shotId: string) {
+    this.media.playAttack(shotId);
+  }
+
   playVictory() {
     this.media.playVictory();
   }
@@ -169,18 +187,20 @@ class GameAudioDirector {
     );
   }
 
-  private play({ cue, strength01 }: AudioCue) {
+  private play(audioCue: AudioCue) {
     if (this.preferences.sfxMuted) return;
+    if (audioCue.cue === "flick") {
+      this.media.playAttack(audioCue.shotId);
+      return;
+    }
+    const { cue, strength01 } = audioCue;
     const strength = Math.max(0.08, Math.min(strength01, 1));
     if (cue === "metal-click") {
       this.media.playCollision(strength);
       return;
     }
     if (!this.context) return;
-    if (cue === "flick") {
-      this.noise(0.055, 0.08, 1800);
-      this.tone(430, 0.045, 0.045, "triangle", 820);
-    } else if (cue === "wood-impact") {
+    if (cue === "wood-impact") {
       this.tone(180 - strength * 45, 0.095, 0.08 * strength, "sine", 78);
       this.noise(0.07, 0.035 * strength, 720);
     } else if (cue === "floor-thud") {

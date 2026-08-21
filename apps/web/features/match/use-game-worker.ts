@@ -6,6 +6,7 @@ import type { GameEvent, GameSnapshot, ShotCommand } from "@sharpener/protocol";
 type WorkerMessage =
   | { type: "READY"; snapshot: GameSnapshot }
   | { type: "SNAPSHOT"; snapshot: GameSnapshot; events: GameEvent[] }
+  | { type: "COMMAND_ACCEPTED"; shotId: string }
   | { type: "COMMAND_REJECTED"; reason: string }
   | { type: "ERROR"; message: string };
 
@@ -13,6 +14,7 @@ export function useGameWorker() {
   const workerRef = useRef<Worker | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [events, setEvents] = useState<GameEvent[]>([]);
+  const [acceptedShotId, setAcceptedShotId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,6 +28,9 @@ export function useGameWorker() {
       if (message.type === "SNAPSHOT") {
         setSnapshot(message.snapshot);
         setEvents(message.events);
+      }
+      if (message.type === "COMMAND_ACCEPTED") {
+        setAcceptedShotId(message.shotId);
       }
       if (message.type === "COMMAND_REJECTED") setError(message.reason);
       if (message.type === "ERROR") setError(message.message);
@@ -47,5 +52,5 @@ export function useGameWorker() {
     workerRef.current?.postMessage({ type: "RESET" });
   }, []);
 
-  return { snapshot, events, error, shoot, reset };
+  return { snapshot, events, acceptedShotId, error, shoot, reset };
 }

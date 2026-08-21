@@ -38,7 +38,7 @@ describe("physics audio mapping", () => {
     ).toEqual({ cue: "fall-whoosh", strength01: 1 });
     expect(
       eventToAudioCue({ type: "SHOT_ACCEPTED", player: 0, shotId: "shot" }),
-    ).toEqual({ cue: "flick", strength01: 1 });
+    ).toEqual({ cue: "flick", strength01: 1, shotId: "shot" });
     expect(eventToAudioCue({ type: "PHASE_CHANGED", phase: "MOVING" })).toBeNull();
   });
 });

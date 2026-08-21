@@ -1,10 +1,15 @@
 "use client";
 
 import { RoundedBox } from "@react-three/drei";
-import { useMemo } from "react";
-import { ExtrudeGeometry, Path, Shape } from "three";
+import { useEffect, useMemo } from "react";
+import { BackSide } from "three";
 import type { SharpenerCosmeticId } from "@sharpener/protocol";
 import { getCosmetic } from "./cosmetics";
+import {
+  SHARPENER_APPEARANCE,
+  getSharpenerMaterialProfile,
+} from "./sharpener-appearance";
+import { createSharpenerBodyGeometry } from "./sharpener-geometry";
 
 export function SharpenerModel({
   cosmeticId,
@@ -14,96 +19,152 @@ export function SharpenerModel({
   active?: boolean;
 }) {
   const cosmetic = getCosmetic(cosmeticId);
-  const bodyGeometry = useMemo(() => {
-    const body = new Shape();
-    body.moveTo(-0.025, -0.011);
-    body.lineTo(0.025, -0.011);
-    body.lineTo(0.0215, 0.011);
-    body.quadraticCurveTo(0.021, 0.012, 0.019, 0.012);
-    body.lineTo(-0.019, 0.012);
-    body.quadraticCurveTo(-0.021, 0.012, -0.0215, 0.011);
-    body.closePath();
+  const material = getSharpenerMaterialProfile(cosmeticId);
+  const bodyGeometry = useMemo(() => createSharpenerBodyGeometry(), []);
+  const { body, inlet, blade, screw } = SHARPENER_APPEARANCE;
+  const bodyTop = body.height / 2;
+  const frontFace = body.depth / 2 + 0.00012;
 
-    const inlet = new Path();
-    inlet.absellipse(0, 0, 0.0065, 0.0065, 0, Math.PI * 2, false, 0);
-    body.holes.push(inlet);
-
-    const geometry = new ExtrudeGeometry(body, {
-      depth: 0.036,
-      bevelEnabled: true,
-      bevelSegments: 5,
-      bevelSize: 0.00155,
-      bevelThickness: 0.00145,
-      curveSegments: 32,
-      steps: 1,
-    });
-    geometry.translate(0, 0, -0.018);
-    geometry.computeVertexNormals();
-    return geometry;
-  }, []);
+  useEffect(() => () => bodyGeometry.dispose(), [bodyGeometry]);
 
   return (
-    <group>
-      <mesh geometry={bodyGeometry} castShadow receiveShadow>
+    <group name="classic-school-sharpener">
+      <mesh
+        name="sharpener-body"
+        geometry={bodyGeometry}
+        castShadow
+        receiveShadow
+      >
         <meshPhysicalMaterial
           color={cosmetic.body}
-          roughness={cosmeticId === "aluminium-silver" ? 0.3 : 0.42}
-          metalness={cosmeticId === "aluminium-silver" ? 0.72 : 0.08}
-          clearcoat={cosmeticId === "aluminium-silver" ? 0.1 : 0.45}
-          clearcoatRoughness={0.35}
+          roughness={material.roughness}
+          metalness={material.metalness}
+          clearcoat={material.clearcoat}
+          clearcoatRoughness={material.clearcoatRoughness}
           emissive={active ? cosmetic.edge : "#000000"}
-          emissiveIntensity={active ? 0.22 : 0}
+          emissiveIntensity={active ? 0.16 : 0}
         />
       </mesh>
 
       <mesh
+        name="pencil-inlet-tunnel"
         rotation={[Math.PI / 2, 0, 0]}
-        position={[0, 0, -0.0005]}
+        position={[0, 0, 0]}
+        castShadow
+      >
+        <cylinderGeometry
+          args={[
+            inlet.radius * 0.96,
+            inlet.radius * 0.96,
+            inlet.tunnelLength,
+            32,
+            1,
+            true,
+          ]}
+        />
+        <meshStandardMaterial
+          color="#070909"
+          roughness={0.82}
+          metalness={0.02}
+          side={BackSide}
+        />
+      </mesh>
+
+      <mesh
+        name="pencil-inlet-bezel"
+        position={[0, 0, frontFace]}
         castShadow
         receiveShadow
       >
-        <cylinderGeometry args={[0.0058, 0.0058, 0.034, 24]} />
-        <meshStandardMaterial color="#101414" roughness={0.62} />
+        <torusGeometry
+          args={[
+            (inlet.radius + inlet.bezelRadius) / 2,
+            (inlet.bezelRadius - inlet.radius) / 2,
+            12,
+            32,
+          ]}
+        />
+        <meshStandardMaterial
+          color={cosmetic.edge}
+          roughness={0.5}
+          metalness={material.metalness * 0.55}
+        />
       </mesh>
 
       <RoundedBox
-        args={[0.014, 0.00145, 0.029]}
-        radius={0.00065}
+        name="blade-channel"
+        args={[blade.width + 0.0024, 0.00062, blade.channelLength]}
+        radius={0.00055}
         smoothness={3}
-        position={[0.003, 0.0131, 0]}
+        position={[0.002, bodyTop + 0.00005, -0.0008]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial color="#252a29" roughness={0.68} metalness={0.16} />
+      </RoundedBox>
+
+      <RoundedBox
+        name="blade-plate"
+        args={[blade.width, blade.height, blade.length]}
+        radius={0.00058}
+        smoothness={3}
+        position={[0.002, bodyTop + blade.height * 0.64, -0.0008]}
         castShadow
         receiveShadow
       >
         <meshPhysicalMaterial
-          color="#c9cecb"
-          metalness={0.94}
-          roughness={0.16}
-          clearcoat={0.18}
-          clearcoatRoughness={0.22}
+          color="#c7cdcb"
+          metalness={0.92}
+          roughness={0.2}
+          clearcoat={0.12}
+          clearcoatRoughness={0.25}
         />
       </RoundedBox>
-      <mesh position={[0.003, 0.01405, -0.004]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.0038, 0.0038, 0.00055, 28]} />
-        <meshStandardMaterial color="#a4aaa8" metalness={0.9} roughness={0.24} />
-      </mesh>
-      <mesh position={[0.003, 0.01465, -0.004]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.003, 0.003, 0.0011, 28]} />
-        <meshStandardMaterial color="#777e7c" metalness={0.96} roughness={0.17} />
-      </mesh>
+
       <mesh
-        position={[0.003, 0.0153, -0.004]}
+        name="blade-screw"
+        position={[
+          0.002,
+          bodyTop + blade.height + screw.height * 0.55,
+          -0.004,
+        ]}
+        castShadow
+        receiveShadow
+      >
+        <cylinderGeometry
+          args={[screw.radius, screw.radius, screw.height, 28]}
+        />
+        <meshStandardMaterial
+          color="#969d9a"
+          metalness={0.88}
+          roughness={0.27}
+        />
+      </mesh>
+
+      <mesh
+        name="blade-screw-slot"
+        position={[
+          0.002,
+          bodyTop + blade.height + screw.height + 0.00008,
+          -0.004,
+        ]}
         rotation={[0, Math.PI / 4, 0]}
         castShadow
       >
-        <boxGeometry args={[0.0042, 0.0005, 0.0007]} />
-        <meshStandardMaterial color="#343a3b" metalness={0.75} roughness={0.34} />
+        <boxGeometry args={[screw.radius * 1.35, 0.00022, 0.00055]} />
+        <meshStandardMaterial
+          color="#303635"
+          metalness={0.72}
+          roughness={0.38}
+        />
       </mesh>
 
       <RoundedBox
-        args={[0.046, 0.001, 0.031]}
+        name="molded-underside"
+        args={[body.width * 0.91, 0.0008, body.depth * 0.86]}
         radius={0.00045}
         smoothness={2}
-        position={[0, -0.0105, 0]}
+        position={[0, -body.height / 2 + 0.00045, 0]}
         castShadow
         receiveShadow
       >

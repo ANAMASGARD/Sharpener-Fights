@@ -205,11 +205,11 @@ export function createTileSurface(anisotropy: number): SurfaceTextureSet {
   const roughness = createCanvas(size);
   const bump = createCanvas(size);
 
-  albedo.context.fillStyle = "#8f918b";
+  albedo.context.fillStyle = "#77756c";
   albedo.context.fillRect(0, 0, size, size);
-  roughness.context.fillStyle = "#c7c7c7";
+  roughness.context.fillStyle = "#d4d4d4";
   roughness.context.fillRect(0, 0, size, size);
-  bump.context.fillStyle = "#424242";
+  bump.context.fillStyle = "#4c4c4c";
   bump.context.fillRect(0, 0, size, size);
 
   for (let row = 0; row < tileCount; row += 1) {
@@ -217,32 +217,89 @@ export function createTileSurface(anisotropy: number): SurfaceTextureSet {
       const x = column * tileSize + grout;
       const y = row * tileSize + grout;
       const inset = tileSize - grout * 2;
-      const warmth = Math.round(random() * 10 - 5);
-      const lightness = 218 + Math.round(random() * 12 - 6);
-      albedo.context.fillStyle = `rgb(${lightness + warmth}, ${lightness + Math.round(warmth * 0.6)}, ${lightness - 8})`;
+      const warmth = Math.round(random() * 12 - 4);
+      const lightness = 211 + Math.round(random() * 14 - 5);
+      albedo.context.fillStyle = `rgb(${lightness + warmth}, ${lightness + Math.round(warmth * 0.55)}, ${lightness - 11})`;
       albedo.context.fillRect(x, y, inset, inset);
 
       const sheen = albedo.context.createLinearGradient(x, y, x + inset, y + inset);
-      sheen.addColorStop(0, "rgba(255,255,248,0.16)");
-      sheen.addColorStop(0.5, "rgba(255,255,248,0.02)");
-      sheen.addColorStop(1, "rgba(113,105,91,0.08)");
+      sheen.addColorStop(0, "rgba(255,252,235,0.2)");
+      sheen.addColorStop(0.48, "rgba(255,250,232,0.035)");
+      sheen.addColorStop(1, "rgba(105,98,86,0.11)");
       albedo.context.fillStyle = sheen;
       albedo.context.fillRect(x, y, inset, inset);
 
-      const tileRoughness = 148 + Math.round(random() * 22);
+      const tileRoughness = 142 + Math.round(random() * 24);
       roughness.context.fillStyle = `rgb(${tileRoughness},${tileRoughness},${tileRoughness})`;
       roughness.context.fillRect(x, y, inset, inset);
       bump.context.fillStyle = "#858585";
       bump.context.fillRect(x, y, inset, inset);
 
-      if (random() > 0.82) {
-        albedo.context.strokeStyle = "rgba(95, 91, 82, 0.12)";
-        albedo.context.lineWidth = 1;
-        albedo.context.beginPath();
-        albedo.context.moveTo(x + inset * 0.2, y + inset * 0.67);
-        albedo.context.lineTo(x + inset * 0.72, y + inset * 0.58);
-        albedo.context.stroke();
+      albedo.context.save();
+      roughness.context.save();
+      bump.context.save();
+      for (const surface of [albedo.context, roughness.context, bump.context]) {
+        surface.beginPath();
+        surface.rect(x, y, inset, inset);
+        surface.clip();
       }
+      const veins = random() > 0.28 ? 1 + Math.floor(random() * 2) : 0;
+      for (let vein = 0; vein < veins; vein += 1) {
+        const startX = x - inset * 0.1;
+        const startY = y + random() * inset;
+        const endX = x + inset * 1.1;
+        const endY = y + random() * inset;
+        const bend = (random() - 0.5) * inset * 0.7;
+
+        albedo.context.strokeStyle = `rgba(101, 95, 84, ${0.055 + random() * 0.075})`;
+        albedo.context.lineWidth = 0.45 + random() * 0.9;
+        albedo.context.beginPath();
+        albedo.context.moveTo(startX, startY);
+        albedo.context.bezierCurveTo(
+          x + inset * 0.3,
+          startY + bend,
+          x + inset * 0.7,
+          endY - bend,
+          endX,
+          endY,
+        );
+        albedo.context.stroke();
+
+        roughness.context.strokeStyle = "rgba(185,185,185,0.34)";
+        roughness.context.lineWidth = 1.2;
+        roughness.context.beginPath();
+        roughness.context.moveTo(startX, startY);
+        roughness.context.bezierCurveTo(
+          x + inset * 0.3,
+          startY + bend,
+          x + inset * 0.7,
+          endY - bend,
+          endX,
+          endY,
+        );
+        roughness.context.stroke();
+
+        bump.context.strokeStyle = "rgba(109,109,109,0.42)";
+        bump.context.lineWidth = 0.65;
+        bump.context.beginPath();
+        bump.context.moveTo(startX, startY);
+        bump.context.bezierCurveTo(
+          x + inset * 0.3,
+          startY + bend,
+          x + inset * 0.7,
+          endY - bend,
+          endX,
+          endY,
+        );
+        bump.context.stroke();
+      }
+      albedo.context.restore();
+      roughness.context.restore();
+      bump.context.restore();
+
+      albedo.context.strokeStyle = "rgba(91, 84, 73, 0.1)";
+      albedo.context.lineWidth = 1;
+      albedo.context.strokeRect(x + 0.5, y + 0.5, inset - 1, inset - 1);
     }
   }
 
@@ -264,16 +321,23 @@ export function createPlasterSurface(anisotropy: number): SurfaceTextureSet {
   const roughness = createCanvas(size);
   const bump = createCanvas(size);
 
-  const wash = albedo.context.createLinearGradient(0, 0, size, size);
-  wash.addColorStop(0, "#b0b59f");
-  wash.addColorStop(0.48, "#a6ad97");
-  wash.addColorStop(1, "#969e89");
+  const wash = albedo.context.createLinearGradient(0, 0, 0, size);
+  wash.addColorStop(0, "#c0bba3");
+  wash.addColorStop(0.34, "#b7b49c");
+  wash.addColorStop(0.355, "#7d866f");
+  wash.addColorStop(0.7, "#919a82");
+  wash.addColorStop(1, "#818a74");
   albedo.context.fillStyle = wash;
   albedo.context.fillRect(0, 0, size, size);
   roughness.context.fillStyle = "#dedede";
   roughness.context.fillRect(0, 0, size, size);
   bump.context.fillStyle = "#808080";
   bump.context.fillRect(0, 0, size, size);
+
+  albedo.context.fillStyle = "rgba(74, 75, 63, 0.18)";
+  albedo.context.fillRect(0, size * 0.345, size, 4);
+  roughness.context.fillStyle = "#c6c6c6";
+  roughness.context.fillRect(0, size * 0.345, size, 4);
 
   for (let index = 0; index < 3600; index += 1) {
     const x = random() * size;
@@ -294,6 +358,15 @@ export function createPlasterSurface(anisotropy: number): SurfaceTextureSet {
     const y = size * (0.68 + random() * 0.28);
     albedo.context.beginPath();
     albedo.context.ellipse(x, y, 10 + random() * 34, 2 + random() * 7, random(), 0, Math.PI * 2);
+    albedo.context.fill();
+  }
+
+  for (let index = 0; index < 7; index += 1) {
+    const x = random() * size;
+    const y = size * (0.42 + random() * 0.48);
+    albedo.context.fillStyle = "rgba(194, 190, 166, 0.11)";
+    albedo.context.beginPath();
+    albedo.context.ellipse(x, y, 5 + random() * 15, 3 + random() * 9, random(), 0, Math.PI * 2);
     albedo.context.fill();
   }
   return textureSet(albedo.canvas, roughness.canvas, bump.canvas, anisotropy);
