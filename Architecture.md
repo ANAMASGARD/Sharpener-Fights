@@ -70,6 +70,7 @@ apps/realtime ──────────────────────
 | `apps/web/proxy.ts`, `apps/web/lib/auth-gate.ts` | Clerk request context plus resource-level page authorization and missing-environment fail-closed UI | Changing authentication coverage or setup behavior |
 | `apps/web/app/modes`, `queue`, `invite`, `play` | Mode, matchmaking, invite, and local/online route entries | Changing the multiplayer journey or route boundary |
 | `apps/web/app/layout.tsx` | Metadata and viewport | Changing title, description, viewport policy, or theme color |
+| `apps/web/vercel.json` | App-scoped Vercel framework detection | Changing the web deployment framework configuration |
 | `apps/web/app/icon.svg` | Browser/app icon | Changing the favicon artwork |
 | `apps/web/app/globals.css` | Global fonts, design tokens, reset, loading state, accessibility utility, and reduced-motion policy | Changing truly global presentation only |
 | `apps/web/features/match/sharpener-selector.module.css` | Scoped selector case and deep CSS 3D cosmetic-preview presentation | Changing the selection screen, horizontal spin, preview materials, or responsive layout |
@@ -362,7 +363,7 @@ Playwright owns port 3100 and sets a development-only `NEXT_PUBLIC_E2E_AUTH_BYPA
 
 ## 11. Planned architecture, not implemented
 
-Computer play remains future work. A seeded bot should run outside rendering and submit the same `ShotCommand` interface; no bot participates in Friend or Instant rooms. Database persistence, progression, inventory, leaderboards, moderation tooling, production observability, and distributed queue/presence are also not implemented. `render.yaml` defines the Singapore realtime service, but no production service or secrets are provisioned. The current in-memory service is appropriate for one-process beta validation, not horizontal scaling.
+Computer play remains future work. A seeded bot should run outside rendering and submit the same `ShotCommand` interface; no bot participates in Friend or Instant rooms. Database persistence, progression, inventory, leaderboards, moderation tooling, production observability, and distributed queue/presence are also not implemented. `render.yaml` defines the Singapore realtime service, but no production service or secrets are provisioned. The current in-memory service is appropriate for one-process beta validation, not horizontal scaling. The Vercel project must use `apps/web` as its Root Directory with outside-root sources enabled so the Next.js package can consume the shared npm workspaces; `apps/web/vercel.json` pins framework detection without duplicating `next` at the monorepo root.
 
 ## 12. Known constraints and maintenance notes
 

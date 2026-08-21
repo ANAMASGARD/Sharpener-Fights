@@ -58,3 +58,34 @@ npm run test:e2e
 The Playwright test uses an installed Google Chrome channel. The unit suite may print a Rapier initialization deprecation warning from the compatibility package; it does not currently fail or affect the simulation checks.
 
 `render.yaml` contains the Singapore realtime-service blueprint. Configure the Clerk secrets, allowed frontend origin, and a shared build ID in Render; configure the matching public realtime URLs/build ID and Clerk keys in the Vercel web project.
+
+### Vercel monorepo settings
+
+The Next.js package lives below the repository root. Configure the Vercel web
+project as follows; do not add `next` to the root `package.json` merely to make
+framework detection pass.
+
+```text
+Root Directory: apps/web
+Include source files outside of the Root Directory: enabled
+Framework Preset: Next.js
+Build Command: automatic
+Install Command: automatic
+Output Directory: automatic
+```
+
+Set these variables for every Vercel environment that should run the game:
+
+```text
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+NEXT_PUBLIC_REALTIME_URL=wss://<realtime-host>
+NEXT_PUBLIC_REALTIME_HTTP_URL=https://<realtime-host>
+NEXT_PUBLIC_BUILD_ID=<shared-build-id>
+```
+
+Deploy the Render blueprint first, then use its HTTPS hostname for the two
+public realtime URLs. Render must use the same value for `BUILD_ID`, and its
+`ALLOWED_WEB_ORIGINS` must include the stable Vercel production origin. Public
+`NEXT_PUBLIC_*` values are captured during `next build`, so redeploy after
+changing them. `CLERK_JWT_KEY` is optional and may remain empty.
