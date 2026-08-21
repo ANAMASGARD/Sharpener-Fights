@@ -61,9 +61,8 @@ The Playwright test uses an installed Google Chrome channel. The unit suite may 
 
 ### Vercel monorepo settings
 
-The Next.js package lives below the repository root. Configure the Vercel web
-project as follows; do not add `next` to the root `package.json` merely to make
-framework detection pass.
+The Next.js package lives below the repository root. The preferred Vercel
+configuration is:
 
 ```text
 Root Directory: apps/web
@@ -73,6 +72,12 @@ Build Command: automatic
 Install Command: automatic
 Output Directory: automatic
 ```
+
+The repository also carries a root `vercel.json` and a matching root
+development declaration for Next.js. This compatibility entrypoint delegates
+the build to `@sharpener/web` and emits `apps/web/.next`, so an existing Vercel
+project still configured at the repository root can deploy without maintaining
+a second application implementation.
 
 Set these variables for every Vercel environment that should run the game:
 
