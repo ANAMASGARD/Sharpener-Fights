@@ -270,7 +270,28 @@ describe("GameSimulation", () => {
     expect(simulation.drainEvents()).toContainEqual({
       type: "MATCH_ENDED",
       winner: 1,
+      reason: "SCORE",
     });
+    simulation.dispose();
+  });
+
+  it("ends the match canonically when a player forfeits", async () => {
+    const simulation = await createGameSimulation();
+
+    simulation.forfeit(0);
+    simulation.forfeit(0);
+
+    expect(simulation.getSnapshot()).toEqual(
+      expect.objectContaining({
+        phase: "MATCH_OVER",
+        matchWinner: 1,
+        scores: [0, 0],
+      }),
+    );
+    expect(simulation.drainEvents()).toEqual([
+      { type: "MATCH_ENDED", winner: 1, reason: "FORFEIT" },
+      { type: "PHASE_CHANGED", phase: "MATCH_OVER" },
+    ]);
     simulation.dispose();
   });
 

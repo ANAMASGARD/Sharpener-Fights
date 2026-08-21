@@ -58,6 +58,11 @@ button {
   box-shadow: 0 18px 54px rgba(0, 0, 0, 0.34);
 }
 
+.auth-setup,.clerk-screen { min-height: 100dvh; display: grid; place-items: center; padding: 2rem; background: #f1ead4; color: #263844; }
+.auth-setup section { max-width: 640px; padding: 2rem; border: 4px double #5e7396; text-align: center; }
+.auth-setup span { color: #a94332; letter-spacing: .15em; text-transform: uppercase; }
+.auth-setup h1 { font: 3rem var(--display); text-transform: uppercase; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

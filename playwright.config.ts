@@ -5,15 +5,16 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3100",
     browserName: "chromium",
     channel: "chrome",
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
+    command: "npm run dev --workspace=@sharpener/web -- --port 3100",
+    env: { NEXT_PUBLIC_E2E_AUTH_BYPASS: "1" },
+    url: "http://localhost:3100",
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

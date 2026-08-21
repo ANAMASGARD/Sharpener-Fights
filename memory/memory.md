@@ -25,7 +25,10 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 - Visual direction: nostalgic classroom, pale green walls, black chalkboard scorecard, white tiled floor, full long scratched wooden desk with visible legs, controlled top-to-bottom perspective, paper ticket HUD. The reference’s “Nostalgic Website” overlay was explicitly rejected and removed.
 - Camera: controlled perspective, no OrbitControls during matches. The desk, board, floor, and both fighters should remain legible in landscape and portrait.
 - Resilience: one WebGL canvas during play. A complete DOM/CSS classroom remains beneath it so disabled WebGL produces a designed fallback rather than a blank green screen.
-- Multiplayer direction: eventually authoritative WebSocket server; clients send shot intent only. Server simulates results and broadcasts about 20 Hz. Continuous `AimUpdate` traffic is outside V1.
+- Online authority: Colyseus owns room/session lifecycle while the shared headless core owns rules. The server runs fixed 120 Hz, sends one custom 20 Hz sequenced frame stream, and never receives continuous `AimUpdate` traffic.
+- Identity and reclaim: Clerk JWTs are verified by the realtime server. A reserved seat can be reclaimed only by the same verified account and active Clerk session within 30 seconds.
+- Match modes: existing same-device Local Play remains available; Friend and Instant are human-only online modes. Computer bots remain future work.
+- Synchronization: Colyseus Schema contains lobby metadata only. Body transforms use `GAME_FRAME`; browser prediction rebases in-place from authoritative snapshots and discards stale frame sequences.
 
 ## What was implemented
 
@@ -33,11 +36,22 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 
 - Converted the initial Create Next App checkout into npm workspaces:
   - `apps/web`
+  - `apps/realtime`
   - `packages/protocol`
   - `packages/game-core`
   - `e2e`
 - Added strict shared TypeScript configuration, Vitest, and Playwright.
 - Next.js currently uses version 16.3.1 and React 19.2.8.
+
+### Authenticated multiplayer vertical slice
+
+- Added resource-level Clerk authorization to selector, mode, queue, and play pages plus a public invitation preview/sign-in handoff. `proxy.ts` only establishes request context, avoiding deprecated path-matcher authorization. Missing Clerk configuration fails closed with an explicit setup screen.
+- Added private 128-bit friend invitations with 15-minute expiry, inline cosmetic choice, ready state, synchronized three-second countdown, reconnect pause, rematch voting, and six rate-limited preset emotes.
+- Added strict-FIFO instant matchmaking. Duplicate online colors are normalized without changing geometry or physics.
+- Added `apps/realtime`: Clerk identity verification/profile cache, one-active-seat registry, exact-session reconnect, Colyseus lobby Schema, authoritative FightRoom, QueueRoom, rate limits, and in-memory invite/queue state.
+- Split protocol and game core into deep modules. `PhysicsWorld` is shared internally by authority and prediction; `restoreSnapshot()` rebases transforms and velocities without reconstructing Rapier every 50 ms.
+- Added protocol/build negotiation, monotonic `frameSeq`/`serverTick`, stale-frame rejection, bounded fixed-step catch-up, sustained-overload closure, local predicted attack audio deduplication, and reversible Seat A/B presentation/input transforms.
+- Refactored the former 501-line match canvas into a thin feed adapter plus `MatchView`, arena, scene, fighter, and HUD modules shared by local and online sessions.
 
 ### Protocol and rules
 
@@ -118,12 +132,13 @@ Interactive physics still requires WebGL. The fallback is an honest visual/error
 
 ## Current verified checkpoint
 
-At the end of the populated-classroom, classic-sharpener, and supplied-effect audio implementation:
+At the end of the authenticated multiplayer implementation:
 
-- `npm test`: 56 tests passed across 12 files, including generated-geometry/collider/material contracts plus selector, Lock In, and deduplicated accepted-attack media behavior.
+- `npm test`: 90 tests passed across 23 files, covering protocol, core, registry, identity, authoritative rooms, prediction/rebase, both-seat transforms, stale frames, and a twenty-room local authority load in addition to the existing visual/audio/physics suite.
 - `npm run typecheck`: passed for every workspace.
 - `npm run lint`: passed.
-- `npm run build`: passed on Next.js 16.3.1; `/`, `/_not-found`, and `/icon.svg` were generated.
+- `npm run build`: passed on Next.js 16.3.1 for both workspaces; routes now include `/modes`, `/queue`, `/invite/[code]`, `/play/local`, `/play/[roomId]`, and `/sign-in`.
+- `npm run test:e2e`: not completed for this milestone. The managed run correctly exposed an unrelated existing Next dev process holding the project-wide dev lock; it was preserved rather than killed. Authenticated two-browser Friend/Instant acceptance also requires configured Clerk test credentials and a running realtime service.
 - The focused Chrome audio journey passed: reselect is silent, a real color change plays `Selection-click.mp3` once, Lock In plays `Lock-IN-sound.mp3` once, a valid accepted shot plays `Sharpener-click.mp3` once, and all newly supplied public assets return successfully. Re-run the complete serial Chrome suite in an unrestricted local runner before release; this environment did not complete a final report after its first six green journeys.
 - Deterministic 1440×1000 reduced-motion captures verified the same selector pose and match camera state; the real shot path produced a sharpener contact and normal physical separation while the visible model remained inside and close to its collider footprint.
 - Deterministic 1440×900 low-tier before/after audit: draw calls moved from 57 to 65, visible triangles from about 33,066 to 36,190, median frame time remained 150 ms, and p95 remained 166.7 ms on the same software-rendered Chrome. The run added no console errors or network paths.
@@ -134,24 +149,22 @@ The unit suite may print a Rapier compatibility initialization deprecation warni
 ## Current gaps—do not describe as shipped
 
 - No computer bot or bot Worker.
-- No friend invites, lobby, room codes, matchmaking, presence, or in-game chat.
-- No WebSocket/realtime server despite the reserved root `dev:realtime` script.
-- No server-authoritative simulation, 20 Hz network snapshots, reconciliation, reconnect/reclaim, or load test.
-- No accounts, authentication, database, profiles, progression, inventory, or monetization.
+- No free-text chat; online communication is limited to six predefined emotes.
+- No database persistence, progression, inventory, leaderboards, monetization, or horizontal/distributed room state.
+- A Singapore Render service blueprint exists, but no production Clerk/Render/Vercel secrets or deployed production URL are configured. End-to-end authenticated two-browser verification remains credential/deployment dependent.
 - No Blender/GLB asset pipeline; all current art is code/CSS/procedural geometry.
-- No deployment configuration or production URL.
 - No gamepad/keyboard aiming path.
 
 Recommended next product order remains:
 
 1. Playtest and tune the local flick, collisions, torque, settling, camera, and mobile gesture until the game feels excellent.
-2. Add a seeded computer opponent through the same `ShotCommand` interface.
-3. Specify and build the authoritative realtime room server, then friend invites and reconnection.
-4. Add accounts/persistence only when the match loop and networking justify them.
+2. Run authenticated two-browser Friend and Instant acceptance plus the external 20-room deployment load gate in the target Singapore environment.
+3. Add a seeded local computer opponent through the same `ShotCommand` interface.
+4. Add persistence/production operations only when the online match loop justifies them.
 
 ## Handoff cautions
 
-- This checkpoint combines the physics-first vertical slice, classroom realism/input-integrity pass, and asset-audio/winner-report pass. Verify the live branch and `git status --short` before new work.
+- This checkpoint adds authenticated human-vs-human online play to the existing physics-first, classroom, and audio vertical slice. Verify the live branch and `git status --short` before new work.
 - Commits, pushes, deployments, rebases, discards, and destructive cleanup require explicit user authorization.
 - The root-level legacy Create Next App paths were replaced by `apps/web`; use the workspace paths as runtime truth.
 - `Architecture.md` is the lookup map for changes. Avoid copying its file-by-file detail back into this memory; this file should remain a compact rationale and milestone record.

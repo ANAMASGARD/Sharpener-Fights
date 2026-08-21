@@ -1,16 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import MatchCanvas from "./match-canvas";
-import {
-  SharpenerSelector,
-  type MatchCosmetics,
-} from "./sharpener-selector";
+import { useRouter } from "next/navigation";
+import { SharpenerSelector } from "./sharpener-selector";
 import { AudioMenu } from "./audio-menu";
 import { useAudioPreferences } from "./use-audio-preferences";
 
 export default function GameExperience() {
-  const [cosmetics, setCosmetics] = useState<MatchCosmetics | null>(null);
+  const router = useRouter();
   const { preferences, toggleMusic, toggleSfx } = useAudioPreferences();
 
   return (
@@ -20,14 +16,7 @@ export default function GameExperience() {
         onToggleMusic={toggleMusic}
         onToggleSfx={toggleSfx}
       />
-      {cosmetics ? (
-        <MatchCanvas
-          cosmetics={cosmetics}
-          onChangeSharpener={() => setCosmetics(null)}
-        />
-      ) : (
-        <SharpenerSelector onStart={setCosmetics} />
-      )}
+      <SharpenerSelector onStart={() => router.push(process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === "1" ? "/play/local" : "/modes")} />
     </>
   );
 }

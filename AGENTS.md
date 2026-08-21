@@ -34,7 +34,7 @@ This repository is a physics-first browser game: pool-style pull-back aiming dri
 
 ## Current product boundary
 
-The implemented checkpoint is a local same-device match with selection, physics, audio, best-of-five scoring, responsive 3D presentation, and WebGL fallback. Bots, friend invitations, matchmaking, authentication, realtime rooms, persistence, and an authoritative game server are future work. Label them as planned until code and tests exist.
+The implemented checkpoint includes local same-device play plus Clerk-authenticated human online play through private Friend invitations or strict-FIFO Instant matchmaking. `apps/realtime` runs the authoritative Colyseus rooms and shared Rapier core; the browser predicts legal local releases and rebases from sequenced 20 Hz frames. Bots, persistence/progression, distributed room state, production deployment configuration, and free-text chat remain future work. The current invitation, queue, room, rate-limit, and profile-cache state is process-local and ephemeral.
 
 ## Working method
 

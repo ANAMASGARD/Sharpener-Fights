@@ -6,32 +6,25 @@
 
 Sharpener Fights is a turn-based browser physics game. A player grabs a sharpener, pulls backward as in a pool game, and releases. Drag direction and distance become an impulse; the local grab point becomes the impulse point, so off-center shots naturally generate torque. There are no desk-edge walls. A sharpener can slide, spin, tip, fall, hit the floor, and is eliminated only after crossing a death plane.
 
-The current repository implements a local same-device vertical slice. Both turns are controlled in the same browser. It includes the physics game, selection screen, responsive classroom presentation, audio, scoring, tests, and a WebGL-disabled fallback. It does not yet include a computer opponent, friend invitations, authentication, matchmaking, realtime rooms, databases, or a server.
+The repository implements both the local same-device match and the first authenticated online PvP vertical slice. Clerk protects play routes, Colyseus owns room/session lifecycle, and `apps/realtime` runs server-authoritative `game-core` simulations for private friend invitations and strict-FIFO instant matchmaking. There is still no computer opponent, database-backed progression, inventory, monetization, or provisioned production deployment.
 
 ## 2. Architectural shape
 
 ```text
-Browser pointer input
-        │
-        ▼
-apps/web/features/match/aim.ts
-pure drag → direction/power calculation
-        │
-        ▼ ShotCommand
-packages/protocol
-validated shared vocabulary
-        │
-        ▼ postMessage
-apps/web/features/match/game.worker.ts
-120 Hz fixed-step owner
-        │
-        ▼
-packages/game-core
-Rapier physics + rules authority
-        │
-        ├── GameSnapshot at up to 60 Hz ──► React/R3F rendering + HUD
-        └── GameEvent batches ────────────► Web Audio feedback
+Pointer Events → aim.ts → validated ShotCommand
+                         │
+          ┌──────────────┴────────────────┐
+          ▼                               ▼
+local game.worker.ts                 Colyseus FightRoom
+120 Hz worker authority             120 Hz server authority
+          │                               │
+          └── GameSnapshot/GameEvent ─────┘
+                         │
+                         ▼
+             MatchFeed → R3F/HUD/audio
 ```
+
+Local play posts commands to one Worker and receives snapshots at up to 60 Hz. Online play predicts a legal local release through `PredictionSimulation`, sends the same command to the room authority, and rebases in place onto monotonically sequenced `GAME_FRAME` snapshots at 20 Hz. The server decides command legality, physics, timers, falls, scores, forfeits, and match outcome.
 
 The core seam is `GameSimulation`. Callers know how to reset, apply a validated shot, advance one fixed tick, read a snapshot, drain events, inspect phase, and dispose. Rapier bodies, colliders, contact queues, timers, and round transitions stay inside the implementation.
 
@@ -40,6 +33,7 @@ The core seam is `GameSimulation`. Callers know how to reset, apply a validated 
 ```text
 sharpenerfight/
 ├── apps/web/                  Next.js browser application
+├── apps/realtime/             Colyseus authoritative rooms and Clerk verification
 ├── packages/protocol/         Shared runtime schemas and TypeScript types
 ├── packages/game-core/        Headless Rapier simulation and match rules
 ├── e2e/                       Playwright full-browser journeys
@@ -56,11 +50,13 @@ sharpenerfight/
 Allowed dependency direction:
 
 ```text
-apps/web ─────────► packages/game-core ─────────► packages/protocol
-    └───────────────────────────────────────────► packages/protocol
+apps/web ───────────────► packages/game-core ──► packages/protocol
+apps/realtime ──────────► packages/game-core ──► packages/protocol
+apps/web ───────────────────────────────────────► packages/protocol
+apps/realtime ──────────────────────────────────► packages/protocol
 ```
 
-`packages/protocol` has no dependency on the other workspace packages. `packages/game-core` must remain headless. `apps/web` adapts browser input, rendering, storage, and audio to those deeper modules.
+`packages/protocol` has no dependency on the other workspace packages. `packages/game-core` remains headless and is shared by the local Worker, server authority, and browser predictor. Neither application owns a second rules implementation.
 
 ## 4. File ownership map
 
@@ -70,7 +66,9 @@ apps/web ─────────► packages/game-core ───────
 | --- | --- | --- |
 | `apps/web/app/page.tsx` | Home route entry | The route should mount a different top-level experience |
 | `apps/web/components/game-loader.tsx` | Client-only dynamic loading | Loading behavior or the client/SSR seam changes |
-| `apps/web/features/match/game-experience.tsx` | Selector-to-match screen transition | Adding a lobby, menu, mode selection, or other top-level game screen |
+| `apps/web/features/match/game-experience.tsx` | Authenticated selector-to-mode transition | Changing the post-selection destination |
+| `apps/web/proxy.ts`, `apps/web/lib/auth-gate.ts` | Clerk request context plus resource-level page authorization and missing-environment fail-closed UI | Changing authentication coverage or setup behavior |
+| `apps/web/app/modes`, `queue`, `invite`, `play` | Mode, matchmaking, invite, and local/online route entries | Changing the multiplayer journey or route boundary |
 | `apps/web/app/layout.tsx` | Metadata and viewport | Changing title, description, viewport policy, or theme color |
 | `apps/web/app/icon.svg` | Browser/app icon | Changing the favicon artwork |
 | `apps/web/app/globals.css` | Global fonts, design tokens, reset, loading state, accessibility utility, and reduced-motion policy | Changing truly global presentation only |
@@ -88,7 +86,7 @@ apps/web ─────────► packages/game-core ───────
 | `apps/web/features/match/sharpener-geometry.ts` | Pure Three.js construction of the beveled, inlet-cut classic-sharpener body | Changing the match body silhouette while retaining an independently testable collider envelope |
 | `apps/web/features/match/sharpener-appearance.test.ts` | Visible-body/collider occupancy, compact-proportion, and cosmetic-material invariants | Any selector or match sharpener geometry/material redesign |
 | `apps/web/features/match/cosmetics.ts` | Cosmetic names and body/edge/highlight colors; local-storage selection helpers; fair opponent-color choice | Recoloring an existing sharpener or changing cosmetic presentation data |
-| `packages/protocol/src/index.ts` | Allowed cosmetic IDs | Adding, removing, or renaming a cosmetic ID |
+| `packages/protocol/src/game.ts` | Allowed cosmetic IDs | Adding, removing, or renaming a cosmetic ID |
 | `apps/web/features/match/cosmetics.test.ts` | Cosmetic fairness and persistence contract | Cosmetic IDs, selection, or storage behavior changes |
 
 Current color source of truth:
@@ -108,7 +106,10 @@ Changing the three hex values in `cosmetics.ts` updates the 3D model, selector p
 
 | Path | Owns | Change here when |
 | --- | --- | --- |
-| `apps/web/features/match/match-canvas.tsx` | R3F canvas, camera, pointer gesture adapter, quality selection, aim line, render interpolation, HUD, turn/power/result controls | Changing match interaction, camera framing, HUD markup, or snapshot-to-scene adaptation |
+| `apps/web/features/match/match-canvas.tsx` | Thin local-worker-to-`MatchView` adapter | Changing local match feed ownership |
+| `apps/web/features/match/match-view.tsx` | Shared local/online classroom, quality, audio, seat transform, and HUD composition | Changing the renderer-facing match contract |
+| `apps/web/features/match/match-arena.tsx`, `match-scene.tsx`, `match-fighter.tsx`, `match-hud.tsx` | Canvas setup, scene composition, fighter gesture/render interpolation, and HUD | Changing camera, scene, input, or match UI without coupling them |
+| `apps/web/features/match/presentation-space.ts` | Reversible Seat A/Seat B position, direction, quaternion, and effect mapping | Changing per-seat orientation or inverse aiming |
 | `apps/web/features/match/aim.ts` | Pure pull-back vector, dead zone, progressive power curve, center assist, and legal local-hit projection | Tuning drag feel or aiming mathematics |
 | `apps/web/features/match/aim-session.ts` | Immutable drag authority and turn-scoped power visibility | Changing how an in-progress client gesture responds to turn changes |
 | `apps/web/features/match/aim.test.ts` | Aim behavior contract | Any aiming calculation changes |
@@ -136,6 +137,22 @@ The selector renders the same visual hierarchy as a deep CSS 3D solid with a six
 
 The Worker is the only owner of the local `GameSimulation`. It advances at 120 Hz using an accumulator, clamps long frame gaps to 250 ms, caps catch-up at 30 ticks per loop, and posts snapshots/events at up to 60 Hz. R3F then lerps/slerps its display groups toward the latest body snapshot. That smoothing is presentation, not physics interpolation or prediction.
 
+### Online session and authoritative service
+
+| Path | Owns |
+| --- | --- |
+| `apps/web/features/multiplayer/realtime-session.ts` | Authenticated SDK client, active room handoff, and tab-scoped reconnect token |
+| `apps/web/features/multiplayer/use-online-match.ts` | Sequenced frame intake, prediction/rebase, shot-audio deduplication, and room lobby adaptation |
+| `apps/web/features/multiplayer/mode-selector.tsx`, `queue-experience.tsx`, `invite-experience.tsx`, `online-match-experience.tsx` | Friend, FIFO queue, invite preview/color, ready/countdown, rematch, and preset-emote UX |
+| `apps/realtime/src/fight-room.ts` | Colyseus transport adapter, authenticated seats, reconnect, messages, and lobby Schema synchronization |
+| `apps/realtime/src/queue-room.ts` | Strict-FIFO queue transport and creation of reserved instant rooms |
+| `apps/realtime/src/room-controller.ts` | Transport-independent authoritative room lifecycle and 120/20 Hz orchestration |
+| `apps/realtime/src/multiplayer-registry.ts` | One-seat-per-account/session reclaim, invite lifecycle, FIFO queue, and rate limits |
+| `apps/realtime/src/identity-authority.ts` | Clerk JWT verification, trusted profile cache, and active-session reconnect verification |
+| `apps/realtime/src/lobby-state.ts` | Low-frequency Colyseus Schema lobby metadata only |
+
+High-frequency body transforms travel only in the validated custom `GAME_FRAME` message. Schema does not duplicate them. Every frame carries `protocolVersion`, `frameSeq`, and `serverTick`; clients reject incompatible schemas and discard duplicate/out-of-order frames. The fixed-step accumulator caps catch-up and closes a room only after sustained overload rather than permitting an unbounded backlog.
+
 ### Audio
 
 | Path | Owns | Change here when |
@@ -147,7 +164,7 @@ The Worker is the only owner of the local `GameSimulation`. It advances at 120 H
 | `apps/web/features/match/use-game-audio.ts` | React adapter for authoritative worker acceptance, physics events, slide motion, and one-shot match victory playback | Changing how worker messages, snapshots, or events drive the audio director |
 | `apps/web/features/match/audio.test.ts` | Cue and preference behavior | Audio mapping or storage behavior changes |
 
-Audio uses a hybrid pipeline. Web Audio synthesizes wood, floor, falling, slide, and subtle room cues. One shared HTML-media controller plays files from `apps/web/public/audio`: playground music loops at volume `0.5`; actual selector changes use `Selection-click.mp3`; Lock In uses `Lock-IN-sound.mp3`; accepted attacks use `Sharpener-click.mp3`; collision contact uses the supplied sharpener MP3; and match victory starts the school bell plus winner effect together while stopping the winner effect after seven seconds. Attack playback is deduplicated by `shotId`. The worker posts `COMMAND_ACCEPTED` immediately after `game-core` accepts a local shot so the effect cannot be lost behind a subsequent empty snapshot; the later `SHOT_ACCEPTED` event reaches the same deduplicator. A future online predictor may play the same shot ID locally before server confirmation without replaying it. Audio unlock occurs on the first pointer/keyboard gesture because browsers block audible autoplay. The singleton controller lives above selector/match transitions, so music does not restart between screens. Media play rejection cannot break gameplay.
+Audio uses a hybrid pipeline. Web Audio synthesizes wood, floor, falling, slide, and subtle room cues. One shared HTML-media controller plays files from `apps/web/public/audio`: playground music loops at volume `0.5`; actual selector changes use `Selection-click.mp3`; Lock In uses `Lock-IN-sound.mp3`; accepted attacks use `Sharpener-click.mp3`; collision contact uses the supplied sharpener MP3; and match victory starts the school bell plus winner effect together while stopping the winner effect after seven seconds. Attack playback is deduplicated by `shotId`. The local worker posts `COMMAND_ACCEPTED` immediately after `game-core` accepts a shot; online prediction uses the same shot ID before server confirmation, so the later authoritative acceptance cannot replay it. Audio unlock occurs on the first pointer/keyboard gesture because browsers block audible autoplay. The singleton controller lives above selector/match transitions, so music does not restart between screens. Media play rejection cannot break gameplay.
 
 | Event | Cue |
 | --- | --- |
@@ -164,13 +181,14 @@ Audio uses a hybrid pipeline. Web Audio synthesizes wood, floor, falling, slide,
 
 ### Shared protocol
 
-`packages/protocol/src/index.ts` is the serialization seam. It owns:
+`packages/protocol/src/index.ts` is a small barrel over `common.ts`, `game.ts`, `room.ts`, `realtime.ts`, and `worker.ts`. It owns:
 
 - `MatchPhaseSchema` and `MatchPhase`;
 - cosmetic IDs;
 - finite vectors and the validated `ShotCommandSchema`;
 - `PlayerIndex`, `CommandResult`, `BodySnapshot`, `GameSnapshot`, and `GameEvent`;
-- `ClientRoomMessageSchema`, currently containing only completed shot commands.
+- version/build admission, room/queue options, lobby/invite metadata, preset emotes, worker messages, and client/server realtime messages;
+- sequenced `GAME_FRAME`, accepted-shot, seat, queue, invite, error, and resynchronization contracts.
 
 Any future worker or network message that crosses a trust/process seam should have its shared shape and runtime validation here. Do not move presentation-only drag state into the protocol for V1. The authority never receives continuous aiming updates.
 
@@ -182,6 +200,7 @@ Any future worker or network message that crosses a trust/process seam should ha
 interface GameSimulation {
   reset(config?: Partial<MatchConfig>): void;
   applyCommand(command: ShotCommand): CommandResult;
+  forfeit(loser: PlayerIndex): void;
   step(): void;
   getSnapshot(): GameSnapshot;
   drainEvents(): GameEvent[];
@@ -190,7 +209,7 @@ interface GameSimulation {
 }
 ```
 
-`createGameSimulation()` asynchronously initializes Rapier and returns that interface. Tests and future server adapters should use this seam rather than reaching into Rapier internals.
+`createGameSimulation()` asynchronously initializes Rapier and returns that interface. `PhysicsWorld` is the shared internal body owner; `PredictionSimulation.restoreSnapshot()` updates body transforms and velocities in place instead of rebuilding Rapier on every network frame.
 
 ## 5. Coordinate system and physical arena
 
@@ -288,14 +307,15 @@ All classroom/environment meshes use `NO_RAYCAST`. Only sharpener render geometr
 
 ## 8. Persistence and external state
 
-There is no database or backend. Browser-local preferences are:
+The realtime service is ephemeral and in-memory: rooms, queue entries, invites, rate-limit windows, and profile cache disappear on process restart. There is no application database. Clerk is the trusted identity provider; the server verifies tokens and active reconnect sessions rather than trusting browser profile fields. Browser-local state is:
 
 | Key | Value |
 | --- | --- |
 | `sharpener-fights:cosmetic` | One validated cosmetic ID |
 | `sharpener-fights:audio` | `{ sfxMuted, musicMuted }` JSON; legacy `ambienceMuted` is migrated on read |
+| tab `sessionStorage` reconnect key | Colyseus room reconnection token; cleared with the tab/session |
 
-Malformed or unknown values fall back to defaults. Scores and matches are in-memory and reset on reload.
+Malformed cosmetic/audio values fall back to defaults. Local scores reset on reload; online scores live only for the lifetime of the authoritative room.
 
 ## 9. Test architecture
 
@@ -312,20 +332,24 @@ Malformed or unknown values fall back to defaults. Scores and matches are in-mem
 | Audio | `audio.test.ts`, `media-audio.test.ts` | event mapping, preference migration, loop/volume, independent mute, collision, simultaneous victory, seven-second cutoff, and reset |
 | Match summary | `apps/web/features/match/match-summary.test.ts` | winner label, final score, rounds, and turns |
 | Browser journey | `e2e/local-match.spec.ts` | enclosed selector shell across six cosmetics/extreme poses, selection, pointer release, decoration raycast exclusion, audio menu/playback calls/assets, timeout-drag cancellation, quality fallback, portrait usability, enriched DOM classroom, WebGL-disabled fallback |
+| Realtime protocol/authority | `packages/protocol/src/realtime.test.ts`, `apps/realtime/src/*test.ts` | versioned joins, lobby-only Schema, exact-session reconnect, rate limits, FIFO queue, invitation expiry, authoritative shots, overload policy, and twenty-room local authority load |
+| Seat/frame presentation | `presentation-space.test.ts`, `frame-sequence.test.ts` | Seat A/B round trips, inverse input/effects, and stale authoritative-frame rejection |
 
 Use the `GameSimulation` interface for rules tests. Avoid testing physics by reproducing its internal calculations in UI tests.
+
+Playwright owns port 3100 and sets a development-only `NEXT_PUBLIC_E2E_AUTH_BYPASS`; production builds cannot activate that bypass. Keeping E2E off the normal port prevents an unrelated developer server from silently changing test configuration.
 
 ## 10. Common change recipes
 
 | Requested change | Primary file(s) | Required follow-through |
 | --- | --- | --- |
 | Recolor an existing sharpener | `cosmetics.ts` | Run cosmetic tests and visually inspect selector, R3F, and fallback |
-| Add/remove/rename a color | `protocol/src/index.ts`, `cosmetics.ts` | Update protocol/cosmetic tests and any saved-value migration policy |
+| Add/remove/rename a color | `protocol/src/game.ts`, `cosmetics.ts` | Update protocol/cosmetic tests and any saved-value migration policy |
 | Change shared sharpener proportions/material identity | `sharpener-appearance.ts`, `sharpener-geometry.ts`, `sharpener-model.tsx`, `sharpener-preview.tsx` | Update appearance tests first; preserve collider occupancy or explicitly reconcile `PHYSICS.sharpenerHalfExtents` |
 | Change selector preview anatomy or inspection controls | `sharpener-preview.tsx`, `sharpener-selector.module.css` | Keep it DOM/CSS; preserve the shared hole/blade/screw hierarchy, verify pointer and keyboard rotation, and confirm there is no selector canvas |
 | Change desk/board/floor appearance | `classroom-environment.tsx`, `classroom-materials.ts`, and `static-classroom.module.css` | Keep interactive and fallback compositions aligned |
 | Change perimeter furniture or props | `classroom-props.tsx`, `static-classroom.tsx`, and `static-classroom.module.css` | Keep props outside the tabletop, preserve `NO_RAYCAST`, and remeasure draw calls/triangles/frame time |
-| Change camera/top-down framing | `ResponsiveCamera` in `match-canvas.tsx` | Check desktop, portrait, table edges, floor, board, HUD, and pointer hit areas |
+| Change camera/top-down framing | `ResponsiveCamera` in `match-scene.tsx` | Check desktop, portrait, table edges, floor, board, HUD, and pointer hit areas |
 | Tune shot strength/feel | `aim.ts`, `PHYSICS.maxImpulse`, friction/damping in game core | Change tests first; test weak/medium/max pulls and edge falls in browser |
 | Change timer/scoring/round rules | `PHYSICS` and state transitions in game core | Update protocol if externally visible shape changes; extend core tests |
 | Add/change synthesized sound | `audio.ts` | Prefer physics events as triggers; update audio tests and unlock behavior |
@@ -333,14 +357,12 @@ Use the `GameSimulation` interface for rules tests. Avoid testing physics by rep
 | Change worker cadence | `game.worker.ts` | Preserve fixed 120 Hz authority; benchmark and test catch-up behavior |
 | Add a protocol message | `packages/protocol` first | Validate at the receiving authority and add schema tests |
 | Diagnose a blank arena | `webgl-support.ts`, `static-classroom.tsx`, browser console | Preserve no-WebGL E2E coverage; do not add another Canvas |
+| Change matchmaking/invites | `multiplayer-registry.ts`, `queue-room.ts`, `fight-room.ts` | Preserve account limits, FIFO ordering, invite entropy/expiry, exact-session seat reclaim, and protocol validation |
+| Change online frame flow | `room-controller.ts`, `realtime.ts`, `use-online-match.ts` | Keep one 120 Hz authority, one 20 Hz transform stream, sequence rejection, bounded catch-up, and in-place prediction rebase |
 
 ## 11. Planned architecture, not implemented
 
-Future online PvP should keep `packages/game-core` as the shared simulation module but instantiate the authoritative copy in a dedicated realtime server. The client should send only validated completed shot commands such as direction, power, local hit point, and turn identity. The server should simulate the result, reject stale/illegal commands, and broadcast snapshots around 20 Hz. Client prediction can improve feel, but server results decide wins. Continuous `AimUpdate` networking remains outside V1.
-
-Computer play should run a seeded bot adapter in a Worker and submit the same `ShotCommand` interface as a human. Friend invites, rooms, reconnection, authentication, and persistence need explicit designs and tests before being described as available.
-
-Likely future workspace additions are `apps/realtime` for the authoritative WebSocket server and a bot module/package, but these paths do not exist yet. The root `dev:realtime` script is reserved for that future workspace and currently has no target.
+Computer play remains future work. A seeded bot should run outside rendering and submit the same `ShotCommand` interface; no bot participates in Friend or Instant rooms. Database persistence, progression, inventory, leaderboards, moderation tooling, production observability, and distributed queue/presence are also not implemented. `render.yaml` defines the Singapore realtime service, but no production service or secrets are provisioned. The current in-memory service is appropriate for one-process beta validation, not horizontal scaling.
 
 ## 12. Known constraints and maintenance notes
 
@@ -348,7 +370,7 @@ Likely future workspace additions are `apps/realtime` for the authoritative WebS
 - `apps/web/next.config.ts` transpiles the workspace packages and disables the detached TypeScript CLI in the managed environment because its output was lost; `npm run typecheck` remains an explicit gate.
 - R3F/Three cannot provide interactive 3D when the browser disables WebGL. The DOM fallback is visual and explanatory, not a second playable engine.
 - AudioContext creation and audible HTML-media playback must remain behind a user gesture.
-- The current worker snapshot type and worker message union are duplicated locally rather than runtime-validated on receipt. Introduce protocol schemas when this becomes a network trust seam.
+- Clerk and the realtime server require the environment variables documented in `.env.example`; without them the web app shows an explicit setup screen rather than silently bypassing authentication.
 - Zustand and Howler are installed but unused in the current implementation. Do not assume they own state or audio.
 - The current 3D environment and sharpener are procedural. Asset loading, compression, shader prewarming, and GLB budgets remain future concerns.
-- The project is not yet deterministic across different Rapier/Wasm builds for network lockstep; future multiplayer should be server-authoritative rather than trusting independent client outcomes.
+- The project is not deterministic across different Rapier/Wasm builds for lockstep; online outcomes therefore remain server-authoritative and browser simulation is prediction only.
