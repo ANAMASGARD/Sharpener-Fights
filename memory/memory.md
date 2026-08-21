@@ -151,7 +151,7 @@ The unit suite may print a Rapier compatibility initialization deprecation warni
 - No computer bot or bot Worker.
 - No free-text chat; online communication is limited to six predefined emotes.
 - No database persistence, progression, inventory, leaderboards, monetization, or horizontal/distributed room state.
-- A Singapore Render service blueprint exists, but no production Clerk/Render/Vercel secrets or deployed production URL are configured. End-to-end authenticated two-browser verification remains credential/deployment dependent.
+- The web frontend is deployed at `https://sharpfights.vercel.app` with the Vercel project Root Directory set to `apps/web`. The Singapore Render realtime service and production cross-service environment remain unverified; authenticated two-browser Friend/Instant acceptance is still required before calling online PvP production-ready.
 - No Blender/GLB asset pipeline; all current art is code/CSS/procedural geometry.
 - No gamepad/keyboard aiming path.
 
@@ -169,3 +169,8 @@ Recommended next product order remains:
 - The root-level legacy Create Next App paths were replaced by `apps/web`; use the workspace paths as runtime truth.
 - `Architecture.md` is the lookup map for changes. Avoid copying its file-by-file detail back into this memory; this file should remain a compact rationale and milestone record.
 - When the implementation changes, record only durable decisions and milestone outcomes here. Keep raw chat transcripts, speculative ideas, and repeated file maps out of this file.
+
+### Same-origin authentication return
+
+- Completed Clerk sign-in and sign-up onboarding returns to `/`, which resolves to `http://localhost:3000/` during development and the active deployment origin in production. The dedicated sign-in route forces this destination so Clerk's hosted `accounts.dev/default-redirect` cannot retain a completed user; global fallback redirects cover modal authentication without overriding an explicit invite return URL.
+- Verification at this checkpoint: 91 unit tests across 24 files, workspace typecheck, lint, production build, and `git diff --check` passed. A real Google OAuth browser round trip was not automated because it requires an interactive Clerk account.

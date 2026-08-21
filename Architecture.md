@@ -67,7 +67,7 @@ apps/realtime ──────────────────────
 | `apps/web/app/page.tsx` | Home route entry | The route should mount a different top-level experience |
 | `apps/web/components/game-loader.tsx` | Client-only dynamic loading | Loading behavior or the client/SSR seam changes |
 | `apps/web/features/match/game-experience.tsx` | Authenticated selector-to-mode transition | Changing the post-selection destination |
-| `apps/web/proxy.ts`, `apps/web/lib/auth-gate.ts` | Clerk request context plus resource-level page authorization and missing-environment fail-closed UI | Changing authentication coverage or setup behavior |
+| `apps/web/proxy.ts`, `apps/web/lib/auth-gate.ts`, `apps/web/lib/auth-redirects.ts` | Clerk request context, resource-level page authorization, missing-environment fail-closed UI, and same-origin post-authentication destinations | Changing authentication coverage, setup behavior, or where completed sign-in/sign-up flows return |
 | `apps/web/app/modes`, `queue`, `invite`, `play` | Mode, matchmaking, invite, and local/online route entries | Changing the multiplayer journey or route boundary |
 | `apps/web/app/layout.tsx` | Metadata and viewport | Changing title, description, viewport policy, or theme color |
 | `apps/web/vercel.json` | App-scoped Vercel framework detection | Changing the web deployment framework configuration |
@@ -331,6 +331,7 @@ Malformed cosmetic/audio values fall back to defaults. Local scores reset on rel
 | Blackboard presentation | `apps/web/features/match/classroom-board-texture.test.ts` | manually zero-padded injected `DD/MM/YYYY` formatting |
 | Sharpener appearance | `apps/web/features/match/sharpener-appearance.test.ts` | collider-envelope occupancy, classic compact proportions, blade/body hierarchy, and cosmetic-only material response |
 | Cosmetics | `apps/web/features/match/cosmetics.test.ts` | six fair choices, distinct opponent color, storage validation |
+| Authentication return | `apps/web/lib/auth-redirects.test.ts` | completed sign-in/sign-up flows return to the same-origin game home instead of Clerk's hosted default redirect |
 | Audio | `audio.test.ts`, `media-audio.test.ts` | event mapping, preference migration, loop/volume, independent mute, collision, simultaneous victory, seven-second cutoff, and reset |
 | Match summary | `apps/web/features/match/match-summary.test.ts` | winner label, final score, rounds, and turns |
 | Browser journey | `e2e/local-match.spec.ts` | enclosed selector shell across six cosmetics/extreme poses, selection, pointer release, decoration raycast exclusion, audio menu/playback calls/assets, timeout-drag cancellation, quality fallback, portrait usability, enriched DOM classroom, WebGL-disabled fallback |
