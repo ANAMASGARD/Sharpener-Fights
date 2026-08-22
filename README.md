@@ -17,31 +17,30 @@ The vertical slice includes:
 - 15-second authoritative turn passing with no auto-release of unfinished drags;
 - best-of-five rounds, a 20-shot draw limit, score HUD, and rematches;
 - protocol, physics, selection, aim, and audio unit tests plus real Chrome selection/pointer/portrait smoke tests;
-- Clerk-authenticated Friend links and strict-FIFO Instant matchmaking;
-- a Colyseus service that runs the shared Rapier authority at 120 Hz and sends sequenced 20 Hz frames;
-- client prediction with authoritative in-place rebase, exact-session 30-second reconnect, ready/countdown/rematch, and six preset emotes;
+- Clerk-authenticated one-use Friend links and compatible FIFO Instant matchmaking;
+- event-driven Vercel authority that restores a Redis checkpoint, resolves shared Rapier physics at fixed 120 Hz, and commits one fenced revision per action;
+- Liveblocks room-scoped access tokens, connectivity/presence/revision notifications, client prediction/rebase, controlling-tab leases, ready/countdown/rematch, and six preset emotes—with no Liveblocks Storage;
 - an installable desktop/mobile PWA with the supplied Sharpener Fights branding, an adaptive launcher emblem, iOS installation instructions, safe update consent, and fully offline guest Local Play.
 
-Bots, database persistence/progression, production deployment configuration, and distributed room state remain later phases. Local and online play deliberately share one headless physics/rules core.
+Bots, player progression, inventory, and production provider acceptance/load verification remain later phases. Local and online play deliberately share one headless physics/rules core.
 
 ## Workspace
 
 ```text
 apps/web              Next.js client and R3F renderer
-apps/realtime         Colyseus rooms and Clerk verification
 packages/protocol     Validated commands, snapshots, and events
 packages/game-core    Headless Rapier simulation and match rules
+packages/multiplayer-core  Provider-independent authoritative workflows
 e2e                   Playwright browser smoke tests
 e2e-pwa               Production PWA install/offline browser tests
 ```
 
 ## Run locally
 
-Local Play does not require Clerk or the realtime server. To enable Friend and Instant modes, copy `.env.example` to `.env.local`/your process environment and fill the Clerk/realtime values. Then run:
+Local Play does not require Clerk or online providers. To enable Friend and Instant modes, copy `.env.example` to `apps/web/.env.local` (or your process environment) and fill the Clerk, Liveblocks, Upstash, and identity-secret values. Then run:
 
 ```bash
 npm install
-npm run dev:realtime
 npm run dev
 ```
 
@@ -69,7 +68,7 @@ npm run test:pwa
 
 `test:pwa` performs its own production build and uses localhost port 3200; run it serially from other browser suites. The Playwright tests use an installed Google Chrome channel. The unit suite may print a Rapier initialization deprecation warning from the compatibility package; it does not currently fail or affect the simulation checks.
 
-`render.yaml` contains the Singapore realtime-service blueprint. Configure the Clerk secrets, allowed frontend origin, and a shared build ID in Render; configure the matching public realtime URLs/build ID and Clerk keys in the Vercel web project.
+Online authority runs in the Next.js application on Vercel. Upstash Redis is the durable/atomic authority; Liveblocks carries connections, presence, and revision notifications only. Configure both integrations in the Vercel project and place compute near the Redis primary region.
 
 ### Vercel monorepo settings
 
@@ -96,15 +95,17 @@ Set these variables for every Vercel environment that should run the game:
 ```text
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 CLERK_SECRET_KEY
-NEXT_PUBLIC_REALTIME_URL=wss://<realtime-host>
-NEXT_PUBLIC_REALTIME_HTTP_URL=https://<realtime-host>
-NEXT_PUBLIC_BUILD_ID=<shared-build-id>
+APP_IDENTITY_SECRET=<at-least-32-random-bytes>
+LIVEBLOCKS_SECRET_KEY=<liveblocks-secret>
+LIVEBLOCKS_WEBHOOK_SECRET=<liveblocks-webhook-signing-secret>
+UPSTASH_REDIS_REST_URL=<upstash-rest-url>
+UPSTASH_REDIS_REST_TOKEN=<upstash-rest-token>
+NEXT_PUBLIC_BUILD_ID=<release-build-id>
 ```
 
-Deploy the Render blueprint first, then use its HTTPS hostname for the two
-public realtime URLs. Render must use the same value for `BUILD_ID`, and its
-`ALLOWED_WEB_ORIGINS` must include the stable Vercel production origin. Public
-`NEXT_PUBLIC_*` values are captured during `next build`, so redeploy after
-changing them. `CLERK_JWT_KEY` is optional and may remain empty.
+Create a Liveblocks webhook pointing to `/api/liveblocks-webhook`. Redis decides
+room membership; `/api/liveblocks-auth` grants one room-scoped access token with
+`*:read` and `storage:none`. Public `NEXT_PUBLIC_*` values are captured during
+`next build`, so redeploy after changing them.
 
 Vercel injects its Git commit SHA into the PWA cache version automatically. For a non-Vercel production host, set `NEXT_PUBLIC_PWA_CACHE_VERSION` to a release identifier when you need an explicit cache namespace; content revisions still protect individual precached assets. The worker and generated source map are build artifacts and are not committed.

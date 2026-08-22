@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdentifierSchema, NonNegativeIntegerSchema } from "./common";
+import { IdentifierSchema } from "./common";
 import { PlayerIndexSchema, SharpenerCosmeticIdSchema } from "./game";
 
 export const RoomModeSchema = z.enum(["FRIEND", "INSTANT"]);
@@ -10,6 +10,7 @@ export const RoomStatusSchema = z.enum([
   "COUNTDOWN",
   "PLAYING",
   "PAUSED_RECONNECT",
+  "PAUSED_ERROR",
   "MATCH_OVER",
   "CLOSED",
 ]);
@@ -35,33 +36,3 @@ export const LobbyPlayerSchema = z.object({
   connected: z.boolean(),
 });
 export type LobbyPlayer = z.infer<typeof LobbyPlayerSchema>;
-
-export const LobbyMetadataSchema = z.object({
-  roomId: IdentifierSchema,
-  mode: RoomModeSchema,
-  status: RoomStatusSchema,
-  players: z.array(LobbyPlayerSchema).max(2),
-  countdownEndsAtMs: NonNegativeIntegerSchema.nullable(),
-  reconnectDeadlineMs: NonNegativeIntegerSchema.nullable(),
-  rematchVotes: z.array(PlayerIndexSchema).max(2),
-});
-export type LobbyMetadata = z.infer<typeof LobbyMetadataSchema>;
-
-export const InviteStateSchema = z.enum([
-  "AVAILABLE",
-  "EXPIRED",
-  "FULL",
-  "STARTED",
-  "CANCELLED",
-]);
-export type InviteState = z.infer<typeof InviteStateSchema>;
-
-export const InviteMetadataSchema = z.object({
-  code: z.string().min(22).max(128),
-  roomId: IdentifierSchema,
-  hostDisplayName: z.string().trim().min(1).max(20),
-  hostAvatarUrl: z.string().url().nullable(),
-  expiresAtMs: NonNegativeIntegerSchema,
-  state: InviteStateSchema,
-});
-export type InviteMetadata = z.infer<typeof InviteMetadataSchema>;

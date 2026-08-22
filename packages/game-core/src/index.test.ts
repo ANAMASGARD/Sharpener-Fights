@@ -58,6 +58,30 @@ function stepUntilSettled(
 }
 
 describe("GameSimulation", () => {
+  it("turns an overlong moving phase into an unscored safety draw", async () => {
+    const game = await createGameSimulation({ matchId: "safety-draw" });
+    const shot = {
+      ...command(),
+      matchId: "safety-draw",
+      shotId: "safety-shot",
+      power01: 0.5,
+    };
+
+    expect(game.applyCommand(shot)).toEqual({ accepted: true });
+    expect(game.resolveSafetyDraw()).toBe(true);
+    expect(game.getSnapshot()).toMatchObject({
+      phase: "ROUND_OVER",
+      scores: [0, 0],
+      roundWinner: null,
+    });
+    expect(game.drainEvents()).toContainEqual({
+      type: "ROUND_ENDED",
+      roundId: 1,
+      winner: null,
+      reason: "SAFETY_LIMIT",
+    });
+    game.dispose();
+  });
   it("uses the approved long-desk tactical physics profile", () => {
     expect(PHYSICS.tableHalfExtents).toEqual({ x: 0.42, y: 0.025, z: 0.65 });
     expect(PHYSICS.sharpenerMass).toBe(0.022);

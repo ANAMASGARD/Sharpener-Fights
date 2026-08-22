@@ -1,4 +1,5 @@
 import {
+  type BodySnapshot,
   type CommandResult,
   type GameEvent,
   type GameSnapshot,
@@ -16,11 +17,39 @@ export type MatchConfig = {
   startingPlayer: PlayerIndex;
 };
 
+export const CHECKPOINT_VERSION = 1;
+
+export type GameCheckpoint = {
+  checkpointVersion: number;
+  config: MatchConfig;
+  rules: {
+    tick: number;
+    phase: MatchPhase;
+    roundId: number;
+    turnId: number;
+    activePlayer: PlayerIndex;
+    aimingDeadlineTick: number;
+    scores: [number, number];
+    roundWinner: PlayerIndex | null;
+    matchWinner: PlayerIndex | null;
+    roundOverDeadlineTick: number;
+    shotCount: number;
+    settledTicks: number;
+    eliminated: [boolean, boolean];
+    fallingStarted: [boolean, boolean];
+  };
+  bodies: [BodySnapshot, BodySnapshot];
+};
+
 export interface GameSimulation {
   reset(config?: Partial<MatchConfig>): void;
   applyCommand(command: ShotCommand): CommandResult;
   forfeit(loser: PlayerIndex): void;
+  expireTurn(expectedPlayer?: PlayerIndex): boolean;
+  resolveSafetyDraw(): boolean;
   step(): void;
+  createCheckpoint(): GameCheckpoint;
+  restoreCheckpoint(checkpoint: GameCheckpoint): void;
   getSnapshot(): GameSnapshot;
   drainEvents(): GameEvent[];
   getPhase(): MatchPhase;
@@ -114,6 +143,23 @@ class RapierGameSimulation implements GameSimulation {
     );
   }
 
+  expireTurn(expectedPlayer?: PlayerIndex) {
+    if (
+      this.phase !== "AIMING" ||
+      (expectedPlayer !== undefined && expectedPlayer !== this.activePlayer)
+    ) {
+      return false;
+    }
+    this.passTurnForExpiredTimer();
+    return true;
+  }
+
+  resolveSafetyDraw() {
+    if (this.phase !== "MOVING" && this.phase !== "SETTLING") return false;
+    this.endRound(null, "SAFETY_LIMIT");
+    return true;
+  }
+
   step() {
     if (this.disposed) throw new Error("GameSimulation has been disposed");
     this.tick += 1;
@@ -177,7 +223,7 @@ class RapierGameSimulation implements GameSimulation {
 
   private endRound(
     winner: PlayerIndex | null,
-    reason: "KNOCKOUT" | "DOUBLE_FALL" | "SHOT_LIMIT",
+    reason: "KNOCKOUT" | "DOUBLE_FALL" | "SHOT_LIMIT" | "SAFETY_LIMIT",
   ) {
     this.roundWinner = winner;
     if (winner !== null) this.scores[winner] += 1;
@@ -273,6 +319,63 @@ class RapierGameSimulation implements GameSimulation {
     };
   }
 
+  createCheckpoint(): GameCheckpoint {
+    const snapshot = this.getSnapshot();
+    return {
+      checkpointVersion: CHECKPOINT_VERSION,
+      config: { ...this.config },
+      rules: {
+        tick: this.tick,
+        phase: this.phase,
+        roundId: this.roundId,
+        turnId: this.turnId,
+        activePlayer: this.activePlayer,
+        aimingDeadlineTick: this.aimingDeadlineTick,
+        scores: [...this.scores],
+        roundWinner: this.roundWinner,
+        matchWinner: this.matchWinner,
+        roundOverDeadlineTick: this.roundOverDeadlineTick,
+        shotCount: this.shotCount,
+        settledTicks: this.settledTicks,
+        eliminated: [...this.eliminated],
+        fallingStarted: [...this.fallingStarted],
+      },
+      bodies: [
+        { ...snapshot.sharpeners[0] },
+        { ...snapshot.sharpeners[1] },
+      ],
+    };
+  }
+
+  restoreCheckpoint(checkpoint: GameCheckpoint) {
+    if (checkpoint.checkpointVersion !== CHECKPOINT_VERSION) {
+      throw new Error(
+        `Unsupported game checkpoint version: ${checkpoint.checkpointVersion}`,
+      );
+    }
+    this.physics?.dispose();
+    this.physics = new PhysicsWorld();
+    this.physics.restoreBodies(checkpoint.bodies);
+    this.config = { ...checkpoint.config };
+    this.tick = checkpoint.rules.tick;
+    this.phase = checkpoint.rules.phase;
+    this.roundId = checkpoint.rules.roundId;
+    this.turnId = checkpoint.rules.turnId;
+    this.activePlayer = checkpoint.rules.activePlayer;
+    this.aimingDeadlineTick = checkpoint.rules.aimingDeadlineTick;
+    this.scores = [...checkpoint.rules.scores];
+    this.roundWinner = checkpoint.rules.roundWinner;
+    this.matchWinner = checkpoint.rules.matchWinner;
+    this.roundOverDeadlineTick = checkpoint.rules.roundOverDeadlineTick;
+    this.shotCount = checkpoint.rules.shotCount;
+    this.settledTicks = checkpoint.rules.settledTicks;
+    this.eliminated = [...checkpoint.rules.eliminated];
+    this.fallingStarted = [...checkpoint.rules.fallingStarted];
+    this.seenShotIds.clear();
+    this.events = [];
+    this.disposed = false;
+  }
+
   drainEvents() {
     const drained = this.events;
     this.events = [];
@@ -299,4 +402,13 @@ export async function createGameSimulation(
 ): Promise<GameSimulation> {
   await initializeRapier();
   return new RapierGameSimulation(config);
+}
+
+export async function createGameSimulationFromCheckpoint(
+  checkpoint: GameCheckpoint,
+): Promise<GameSimulation> {
+  await initializeRapier();
+  const simulation = new RapierGameSimulation(checkpoint.config);
+  simulation.restoreCheckpoint(checkpoint);
+  return simulation;
 }

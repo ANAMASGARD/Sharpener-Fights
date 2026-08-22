@@ -125,7 +125,7 @@ export const GameEventSchema = z.discriminatedUnion("type", [
     type: z.literal("ROUND_ENDED"),
     roundId: z.number().int().positive(),
     winner: PlayerIndexSchema.nullable(),
-    reason: z.enum(["KNOCKOUT", "DOUBLE_FALL", "SHOT_LIMIT"]),
+    reason: z.enum(["KNOCKOUT", "DOUBLE_FALL", "SHOT_LIMIT", "SAFETY_LIMIT"]),
   }),
   z.object({
     type: z.literal("MATCH_ENDED"),

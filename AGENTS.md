@@ -34,7 +34,7 @@ This repository is a physics-first browser game: pool-style pull-back aiming dri
 
 ## Current product boundary
 
-The implemented checkpoint includes local same-device play plus Clerk-authenticated human online play through private Friend invitations or strict-FIFO Instant matchmaking. `apps/realtime` runs the authoritative Colyseus rooms and shared Rapier core; the browser predicts legal local releases and rebases from sequenced 20 Hz frames. Bots, persistence/progression, distributed room state, production deployment configuration, and free-text chat remain future work. The current invitation, queue, room, rate-limit, and profile-cache state is process-local and ephemeral.
+The implemented checkpoint includes local same-device play plus the code path for Clerk-authenticated human online play through private Friend invitations or compatible FIFO Instant matchmaking. Vercel route handlers call provider-independent `multiplayer-core`; Upstash Redis owns membership, checkpoints, revisions, locks, deadlines, invitations, matchmaking, leases, and idempotency; Liveblocks provides room-scoped connectivity, presence, notifications, and preset emotes only, with no Liveblocks Storage. The browser predicts legal releases and recovers authority by Redis revision. Online deployment remains unverified until provider secrets and two-browser/load gates are completed. Bots, persistence/progression, inventory, and free-text chat remain future work.
 
 ## Working method
 
@@ -57,4 +57,4 @@ npm run test:e2e
 git diff --check
 ```
 
-`npm run test:e2e` starts/reuses localhost port 3000 and requires an installed Google Chrome channel. Run integration suites serially when they share that port. The Rapier compatibility package currently prints a non-failing initialization deprecation warning in unit tests.
+`npm run test:e2e` starts a dedicated localhost server on port 3100 and requires an installed Google Chrome channel. `npm run test:pwa` uses the production server on port 3200. Run integration suites serially. The Rapier compatibility package currently prints a non-failing initialization deprecation warning in unit tests.

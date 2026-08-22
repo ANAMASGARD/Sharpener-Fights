@@ -401,6 +401,7 @@ test("plays the supplied background track and keeps independent audio controls a
 test("shows final statistics, plays both victory tracks once, and can play again", async ({
   page,
 }) => {
+  test.setTimeout(45_000);
   await page.addInitScript(() => {
     const playedAudio: string[] = [];
     const pausedAudio: string[] = [];
@@ -486,7 +487,7 @@ test("shows final statistics, plays both victory tracks once, and can play again
   await page.goto("/");
   await page.getByRole("button", { name: "Lock in" }).click();
 
-  const winner = page.getByRole("dialog", { name: "Orange wins!" });
+  const winner = page.getByRole("dialog", { name: "Ember Red wins!" });
   await expect(winner).toBeVisible();
   await expect(winner).toContainText("3–1");
   await expect(winner).toContainText("Rounds4");

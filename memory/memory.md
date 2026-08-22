@@ -1,6 +1,6 @@
 # Sharpener Fights compact project memory
 
-> Handoff snapshot from the initial design and implementation session, updated 2026-08-21. Read this for intent, decisions, completed work, and unfinished work. Read [`../Architecture.md`](../Architecture.md) for current file ownership and runtime details. Verify mutable facts against the live repository before acting.
+> Compact handoff snapshot, updated 2026-08-22. Read this for intent, durable decisions, milestones, and unfinished work. Read [`../Architecture.md`](../Architecture.md) for the authoritative current ownership/runtime map. Verify mutable facts against the live repository before acting.
 
 ## Product north star
 
@@ -25,10 +25,11 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 - Visual direction: nostalgic classroom, pale green walls, black chalkboard scorecard, white tiled floor, full long scratched wooden desk with visible legs, controlled top-to-bottom perspective, paper ticket HUD. The reference’s “Nostalgic Website” overlay was explicitly rejected and removed.
 - Camera: controlled perspective, no OrbitControls during matches. The desk, board, floor, and both fighters should remain legible in landscape and portrait.
 - Resilience: one WebGL canvas during play. A complete DOM/CSS classroom remains beneath it so disabled WebGL produces a designed fallback rather than a blank green screen.
-- Online authority: Colyseus owns room/session lifecycle while the shared headless core owns rules. The server runs fixed 120 Hz, sends one custom 20 Hz sequenced frame stream, and never receives continuous `AimUpdate` traffic.
-- Identity and reclaim: Clerk JWTs are verified by the realtime server. A reserved seat can be reclaimed only by the same verified account and active Clerk session within 30 seconds.
+- Online authority: Vercel route handlers call provider-independent `multiplayer-core`; Upstash Redis owns membership, checkpoints, revisions, locks, deadlines, invitations, queue state, controller leases, and idempotency. `game-core` remains the sole rules/physics authority and resolves event-driven shots at fixed 120 Hz without a continuously running room process.
+- Liveblocks boundary: private connectivity, room-scoped access tokens, presence, revision notifications, and six preset emotes only. Redis is truth; Liveblocks events are recoverable hints; Liveblocks Storage is explicitly unused.
+- Identity and reclaim: Clerk authenticates the account, the server exposes only a stable HMAC pseudonym, and a seat can be controlled by one renewable client-instance lease. A passive tab can explicitly reclaim during the 30-second grace period.
 - Match modes: existing same-device Local Play remains available; Friend and Instant are human-only online modes. Computer bots remain future work.
-- Synchronization: Colyseus Schema contains lobby metadata only. Body transforms use `GAME_FRAME`; browser prediction rebases in-place from authoritative snapshots and discards stale frame sequences.
+- Synchronization: public `PlaybackState`/`ShotResolution` payloads are separate from server-only `GameCheckpoint`. Clients discard stale revisions, replay a consecutive resolution, and fetch a Redis `DELTA` or `FULL` state after gaps, reconnects, visibility return, or safety polling.
 - PWA boundary: selector, mode selection, and Local Play are public/offline; Friend, Instant, invite, sign-in, and online match routes remain Clerk-scoped and network-only. Development never registers a service worker.
 - Install/update policy: show the branded install Desk Ticket only on safe pre-match screens after engagement plus eight seconds; remember dismissal for fourteen days; use manual iOS/iPadOS instructions where native prompting is unavailable. Waiting worker updates require user consent on safe screens and never reload an active match.
 
@@ -38,19 +39,19 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 
 - Converted the initial Create Next App checkout into npm workspaces:
   - `apps/web`
-  - `apps/realtime`
   - `packages/protocol`
   - `packages/game-core`
+  - `packages/multiplayer-core`
   - `e2e`
 - Added strict shared TypeScript configuration, Vitest, and Playwright.
 - Next.js currently uses version 16.3.1 and React 19.2.8.
 
-### Authenticated multiplayer vertical slice
+### Earlier authenticated multiplayer prototype (superseded)
 
 - Added resource-level Clerk authorization to selector, mode, queue, and play pages plus a public invitation preview/sign-in handoff. `proxy.ts` only establishes request context, avoiding deprecated path-matcher authorization. Missing Clerk configuration fails closed with an explicit setup screen.
 - Added private 128-bit friend invitations with 15-minute expiry, inline cosmetic choice, ready state, synchronized three-second countdown, reconnect pause, rematch voting, and six rate-limited preset emotes.
 - Added strict-FIFO instant matchmaking. Duplicate online colors are normalized without changing geometry or physics.
-- Added `apps/realtime`: Clerk identity verification/profile cache, one-active-seat registry, exact-session reconnect, Colyseus lobby Schema, authoritative FightRoom, QueueRoom, rate limits, and in-memory invite/queue state.
+- The first prototype used `apps/realtime` and Colyseus. The current serverless Liveblocks + Redis milestone at the end of this file supersedes that runtime; the old application and dependency were removed.
 - Split protocol and game core into deep modules. `PhysicsWorld` is shared internally by authority and prediction; `restoreSnapshot()` rebases transforms and velocities without reconstructing Rapier every 50 ms.
 - Added protocol/build negotiation, monotonic `frameSeq`/`serverTick`, stale-frame rejection, bounded fixed-step catch-up, sustained-overload closure, local predicted attack audio deduplication, and reversible Seat A/B presentation/input transforms.
 - Refactored the former 501-line match canvas into a thin feed adapter plus `MatchView`, arena, scene, fighter, and HUD modules shared by local and online sessions.
@@ -153,14 +154,14 @@ The unit suite may print a Rapier compatibility initialization deprecation warni
 - No computer bot or bot Worker.
 - No free-text chat; online communication is limited to six predefined emotes.
 - No database persistence, progression, inventory, leaderboards, monetization, or horizontal/distributed room state.
-- The web frontend is deployed at `https://sharpfights.vercel.app` with the Vercel project Root Directory set to `apps/web`. The Singapore Render realtime service and production cross-service environment remain unverified; authenticated two-browser Friend/Instant acceptance is still required before calling online PvP production-ready.
+- The web frontend is deployed at `https://sharpfights.vercel.app` with the Vercel project Root Directory set to `apps/web`. The Liveblocks + Upstash production environment remains unverified; authenticated two-browser Friend/Instant acceptance is still required before calling online PvP production-ready.
 - No Blender/GLB asset pipeline; all current art is code/CSS/procedural geometry.
 - No gamepad/keyboard aiming path.
 
 Recommended next product order remains:
 
 1. Playtest and tune the local flick, collisions, torque, settling, camera, and mobile gesture until the game feels excellent.
-2. Run authenticated two-browser Friend and Instant acceptance plus the external 20-room deployment load gate in the target Singapore environment.
+2. Provision Liveblocks and Upstash, then run authenticated two-browser Friend and Instant acceptance plus the staged deployment load gates near the Redis primary region.
 3. Add a seeded local computer opponent through the same `ShotCommand` interface.
 4. Add persistence/production operations only when the online match loop justifies them.
 
@@ -192,3 +193,23 @@ Recommended next product order remains:
 - Removed the legacy Orange/Blue presentation assumption. Blackboard rows and score chalk, the turn ticket, screen-reader score announcement, round result, and winner report now resolve player names from the same cosmetic records that color the rendered sharpeners. Long blackboard labels shrink to fit, and the DOM classroom fallback uses the identical names and highlight colors. Physics, player indices, protocol data, and cosmetic fairness remain unchanged.
 - Reduced the selector's desktop top padding and top-aligned the composition below 960 px viewport height. A compact treatment below 820 px shortens the lid, tray, preview well, ticket, and button without scaling the interface; existing mobile stacking and very-short landscape behavior remain scroll-safe.
 - Final verification: 97 unit tests across 25 files, workspace typecheck, lint, production webpack build, and `git diff --check` passed. Focused Chrome journeys passed for cosmetic labels in the live HUD and no-WebGL blackboard, complete Lock In visibility at 1440×900 and 1366×768, and control reachability at 390×844 portrait and 900×540 landscape. The two desktop captures were visually inspected; the full development E2E suite was not rerun because an existing Next dev process retained the project lock and was preserved.
+
+### Serverless Liveblocks + Redis multiplayer replacement (current)
+
+- Replaced the Colyseus/Render runtime and removed `apps/realtime`, its process-local registry, the browser Colyseus SDK, `render.yaml`, and public realtime URL configuration. Local Worker play is unchanged.
+- Added `packages/multiplayer-core` as the provider-independent authority workflow layer. `packages/game-core` now creates/restores server-only checkpoints; request idempotency remains Redis metadata rather than physics state. A normal 20-second unresolved shot is an unscored `SAFETY_LIMIT` draw, while CPU/payload faults pause the room instead of committing a fabricated result.
+- Upstash Redis now owns room membership, checkpoints, revisions, bounded resolution history, token/revision-fenced commits, deadlines, hashed single-use invitations, compatible FIFO queues, controller leases, webhook idempotency, and account/IP/room rate limits. Room Lua declares all keys and uses `#!lua flags=allow-key-locking` so unrelated rooms do not share the default global script lock.
+- Liveblocks is transport only: private rooms, Redis-checked room-scoped access tokens (`*:read` + `storage:none`), presence, preset-emote events, and server-origin `MATCH_UPDATED` notifications. Redis commits occur before Next.js `after()` broadcasts; missed events recover through `GET ?afterRevision=` as a bounded delta or full playback state.
+- Friend creation now returns a real `/invite/{code}` link with native share, copy, WhatsApp, Telegram, Facebook, X, and email controls. Instant matchmaking polls with capped 0.5/1/2/3-second backoff. Online tabs use one renewable controlling lease, passive observation, explicit takeover, signed disconnect webhooks, and 30-second reclaim semantics.
+- Added Vercel route handlers for friend creation, invite preview/claim, queue join/status/cancel, match recovery/actions/controllers, Liveblocks auth, and Liveblocks webhooks. Clerk IDs are HMAC-pseudonymized; invite codes are hashed; state-changing routes check same origin and bounded validated bodies.
+- Follow-up hardening scoped friend/invite/action idempotency to the verified public account, preserved operation IDs across browser retries, renewed authenticated queue heartbeats, enforced one active ticket per account/partition, retried half-completed Liveblocks provisioning, rejected rooms pinned to incompatible checkpoint/physics versions, kept emotes out of authoritative revision history, and made `MATCH_UPDATED`/delta recovery carry the current public view. Every authoritative shot replay now rebases the prediction world to its final server state. Controller leases moved to independent Redis keys so lease renewal cannot overwrite a concurrent room revision.
+- Current local verification for this replacement: 91 unit tests across 20 files passed; all workspace typechecks and lint passed; the Next.js 16.3.1 production webpack build passed and emitted every new API route; all 15 development gameplay browser journeys and all 3 production PWA journeys passed; `git diff --check` passed. Provider-backed two-browser and staged load gates were not run because this checkout currently has Clerk variables only; `APP_IDENTITY_SECRET`, Liveblocks secrets, and Upstash credentials are missing.
+- Do not call the online service production-ready until the provider variables are provisioned and authenticated two-browser Friend/Instant, missed-event, reconnect/takeover, queue storm, and staged load gates pass. There is no in-memory production fallback.
+
+### Multiplayer provider-configuration handoff
+
+- The serverless multiplayer implementation is complete and locally verified, but this checkout is not yet linked through `.vercel/project.json` and its local `apps/web/.env.local` still needs `APP_IDENTITY_SECRET`, `LIVEBLOCKS_SECRET_KEY`, `LIVEBLOCKS_WEBHOOK_SECRET`, and either the `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` pair or the accepted Vercel Marketplace aliases `KV_REST_API_URL`/`KV_REST_API_TOKEN`. Existing Clerk variables must be preserved.
+- Prefer the Vercel Marketplace product `upstash/upstash-kv` for Redis so Vercel provisions and injects the database credentials. Direct Upstash Console credentials remain supported. Keep the Redis primary region near the Vercel function region used for multiplayer.
+- Create separate Liveblocks Development and Production projects. Copy each server secret only into its matching environment. The production webhook endpoint is `https://sharpfights.vercel.app/api/liveblocks-webhook` and only needs the `userLeft` event; its `whsec_...` signing secret becomes `LIVEBLOCKS_WEBHOOK_SECRET`.
+- `APP_IDENTITY_SECRET` is generated by the operator, not obtained from Clerk, Liveblocks, Upstash, or Vercel. It must be a stable cryptographically random value of at least 32 bytes because changing it changes the pseudonymous multiplayer identity derived from Clerk accounts.
+- Provider secrets are server-only: never add a `NEXT_PUBLIC_` prefix, never paste them into documentation or logs, and never commit `.env.local`. Vercel environment changes apply only to new deployments, so redeploy after provisioning. Then run real Friend and Instant matches with two separate authenticated accounts before describing online PvP as production-ready.

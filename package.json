@@ -8,7 +8,6 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@sharpener/web",
-    "dev:realtime": "npm run dev --workspace=@sharpener/realtime",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
@@ -26,5 +25,10 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "@liveblocks/client": "^3.24.1",
+    "@liveblocks/react": "^3.24.1",
+    "@liveblocks/react-ui": "^3.24.1"
   }
 }

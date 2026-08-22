@@ -6,7 +6,7 @@ const pwaCacheVersion = process.env.VERCEL_GIT_COMMIT_SHA
   ?? "v0.1.0";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@sharpener/game-core", "@sharpener/protocol"],
+  transpilePackages: ["@sharpener/game-core", "@sharpener/multiplayer-core", "@sharpener/protocol"],
   env: { NEXT_PUBLIC_PWA_CACHE_VERSION: pwaCacheVersion },
   turbopack: {},
   experimental: {
@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
           { key: "Service-Worker-Allowed", value: "/" },
         ],
+      },
+      {
+        source: "/invite/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },
     ];
   },
