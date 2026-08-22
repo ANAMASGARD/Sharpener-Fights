@@ -32,7 +32,7 @@ async function enterMatch(
   await page.getByRole("button", { name: "Lock in" }).click();
   await expect(page.locator("[data-phase='AIMING']")).toBeVisible();
   await page.getByRole("button", { name: "Reset" }).click();
-  await expect(page.getByText(/Orange · 1[45]/)).toBeVisible();
+  await expect(page.getByText(/Ocean Blue · \d+/)).toBeVisible();
 }
 
 test("presents a recognizable single-hole sharpener with horizontal automatic rotation", async ({
@@ -59,6 +59,67 @@ test("presents a recognizable single-hole sharpener with horizontal automatic ro
 
   await page.getByRole("radio", { name: "Aluminium" }).click();
   await expect(preview.locator('[data-finish="aluminium"]')).toHaveCount(1);
+});
+
+test("keeps the complete selector ticket inside common desktop viewports", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1366, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const caseBounds = await page
+      .locator("section")
+      .filter({
+        has: page.getByRole("heading", { name: "Sharpener Fights" }),
+      })
+      .boundingBox();
+    const ticketBounds = await page
+      .getByText("Choose your color")
+      .locator("..")
+      .boundingBox();
+    const buttonBounds = await page
+      .getByRole("button", { name: "Lock in" })
+      .boundingBox();
+
+    expect(caseBounds).not.toBeNull();
+    expect(ticketBounds).not.toBeNull();
+    expect(buttonBounds).not.toBeNull();
+    if (!caseBounds || !ticketBounds || !buttonBounds) continue;
+
+    expect(caseBounds.y).toBeLessThanOrEqual(18);
+    expect(ticketBounds.y).toBeGreaterThan(caseBounds.y);
+    expect(buttonBounds.y + buttonBounds.height).toBeLessThanOrEqual(
+      viewport.height - 8,
+    );
+  }
+});
+
+test("keeps selector controls reachable in portrait and short landscape", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 900, height: 540 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+
+    const lockIn = page.getByRole("button", { name: "Lock in" });
+    await lockIn.scrollIntoViewIfNeeded();
+    await expect(lockIn).toBeVisible();
+    const buttonBounds = await lockIn.boundingBox();
+
+    expect(buttonBounds).not.toBeNull();
+    if (!buttonBounds) continue;
+    expect(buttonBounds.y).toBeGreaterThanOrEqual(0);
+    expect(buttonBounds.y + buttonBounds.height).toBeLessThanOrEqual(
+      viewport.height,
+    );
+  }
 });
 
 test("keeps the enclosed selector shell opaque across every cosmetic and extreme pose", async ({
@@ -167,8 +228,10 @@ test("selects a fair cosmetic and releases a pointer drag as a shot", async ({
 
   const canvas = page.locator("canvas");
   await expect(canvas).toBeVisible();
-  await expect(page.getByText(/Orange · \d+/)).toBeVisible();
-  await expect(page.getByText("Round 1. Orange 0, Blue 0.")).toBeAttached();
+  await expect(page.getByText(/Ocean Blue · \d+/)).toBeVisible();
+  await expect(
+    page.getByText(/Round 1\. Ocean Blue 0, .+ 0\./),
+  ).toBeAttached();
   await expect(page.getByText("Nostalgic Website Part 1")).toHaveCount(0);
   await expect(page.locator('[data-layer="static-classroom"]')).toBeAttached();
   await expect(page.locator('[data-part="classroom-blackboard"]')).toBeAttached();
@@ -301,7 +364,7 @@ test("plays the supplied background track and keeps independent audio controls a
   await page.getByRole("button", { name: "Unmute sound effects" }).click();
   await expect(page.getByRole("button", { name: "Mute sound effects" })).toBeVisible();
   await page.getByRole("button", { name: "Reset" }).click();
-  await expect(page.getByText(/Orange · 1[45]/)).toBeVisible();
+  await expect(page.getByText(/Ocean Blue · \d+/)).toBeVisible();
   const canvas = page.locator("canvas");
   const arena = await canvas.boundingBox();
   expect(arena).not.toBeNull();
@@ -473,7 +536,9 @@ test("cancels a held drag when its authoritative turn expires", async ({
     "Shot power 0%",
   );
 
-  await expect(page.getByText(/Blue · \d+/)).toBeVisible({ timeout: 17_000 });
+  await expect(page.locator('[data-active-player="1"]')).toBeVisible({
+    timeout: 17_000,
+  });
   await page.mouse.up();
 
   await expect(page.locator("[data-phase='AIMING']")).toBeVisible();
@@ -553,7 +618,9 @@ test("shows the complete classroom instead of a blank screen when WebGL is unava
 
   await expect(page.locator('canvas[data-layer="arena-canvas"]')).toHaveCount(0);
   await expect(page.locator('[data-layer="static-classroom"]')).toBeVisible();
-  await expect(page.locator('[data-part="classroom-blackboard"]')).toBeVisible();
+  const blackboard = page.locator('[data-part="classroom-blackboard"]');
+  await expect(blackboard).toBeVisible();
+  await expect(blackboard).toContainText("Ocean Blue");
   await expect(page.locator('[data-part="classroom-floor"]')).toBeVisible();
   await expect(page.locator('[data-part="classroom-desk"]')).toBeVisible();
   await expect(page.locator('[data-part="classroom-perimeter"]')).toBeVisible();

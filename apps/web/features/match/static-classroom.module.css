@@ -99,12 +99,12 @@
 }
 
 .fallback-score-row b {
-  color: #ef9b52;
+  color: var(--score-zero, #ef9b52);
   font: 400 clamp(1.25rem, 2.3vw, 2rem)/1 var(--display);
 }
 
 .fallback-score-row b:last-child {
-  color: #67bfd0;
+  color: var(--score-one, #67bfd0);
 }
 
 .fallback-score-row i {

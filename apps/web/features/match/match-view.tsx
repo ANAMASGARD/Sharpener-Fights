@@ -87,7 +87,7 @@ export function MatchView({ cosmetics, feed, onChangeSharpener }: {
           <span>Enable WebGL or browser hardware acceleration, then reload to play.</span>
         </div>}
         <MatchHud snapshot={snapshot} aimPower={displayedAimPower} error={feed.error} localSeat={feed.online ? feed.localSeat : null}
-          onChangeSharpener={onChangeSharpener} onReset={resetMatch} />
+          cosmetics={cosmetics} onChangeSharpener={onChangeSharpener} onReset={resetMatch} />
       </section>
     </main>
   );

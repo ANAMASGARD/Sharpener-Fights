@@ -3,6 +3,7 @@ import {
   COSMETICS,
   chooseOpponentCosmetic,
   readStoredCosmetic,
+  resolveMatchCosmetics,
   writeStoredCosmetic,
 } from "./cosmetics";
 
@@ -46,5 +47,16 @@ describe("sharpener cosmetics", () => {
 
     writeStoredCosmetic(valid, "ocean-blue");
     expect(readStoredCosmetic(valid)).toBe("ocean-blue");
+  });
+
+  it("resolves each player to the selected cosmetic presentation in seat order", () => {
+    expect(
+      resolveMatchCosmetics(["sunflower-yellow", "graphite-black"]).map(
+        ({ name, body }) => ({ name, body }),
+      ),
+    ).toEqual([
+      { name: "Sunflower", body: "#d8a91f" },
+      { name: "Graphite", body: "#34383a" },
+    ]);
   });
 });

@@ -68,6 +68,7 @@ export function MatchScene({
       />
       <ClassroomEnvironment
         snapshot={snapshot}
+        cosmetics={cosmetics}
         profile={profile}
         sceneDate={sceneDate}
       />

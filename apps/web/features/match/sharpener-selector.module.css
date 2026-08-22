@@ -5,7 +5,7 @@
   min-height: 100dvh;
   place-items: center;
   overflow: auto;
-  padding: clamp(1rem, 4vw, 3rem) 1rem;
+  padding: clamp(0.5rem, 1.25vh, 1rem) 1rem clamp(1rem, 3vh, 2rem);
   background:
     linear-gradient(rgba(35, 42, 35, 0.1), rgba(35, 42, 35, 0.32)),
     repeating-linear-gradient(0deg, transparent 0 31px, rgba(78, 92, 91, 0.18) 32px 33px),
@@ -758,6 +758,52 @@
 
   .preview-well {
     min-height: 12rem;
+  }
+}
+
+@media (min-width: 681px) and (max-height: 960px) {
+  .selection-screen {
+    align-content: start;
+    padding-top: 0.5rem;
+  }
+}
+
+@media (min-width: 681px) and (max-height: 820px) {
+  .case-lid {
+    min-height: 11rem;
+    padding-block: 1rem;
+  }
+
+  .case-lid h1 {
+    font-size: clamp(3.4rem, 8.5vh, 4.8rem);
+  }
+
+  .case-mark {
+    margin-top: 0.5rem;
+  }
+
+  .case-tray {
+    padding: 0.85rem 1rem;
+  }
+
+  .preview-well {
+    min-height: 14rem;
+  }
+
+  .selection-ticket {
+    padding-block: 0.75rem 1rem;
+  }
+
+  .selection-ticket strong {
+    font-size: clamp(2.1rem, 6vh, 3rem);
+  }
+
+  .selection-ticket span {
+    margin-bottom: 0.5rem;
+  }
+
+  .selection-ticket button {
+    padding-block: 0.65rem;
   }
 }
 

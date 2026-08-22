@@ -85,3 +85,9 @@ export function writeStoredCosmetic(
 export function getCosmetic(id: SharpenerCosmeticId) {
   return COSMETICS.find((cosmetic) => cosmetic.id === id) ?? COSMETICS[0];
 }
+
+export function resolveMatchCosmetics(
+  cosmeticIds: readonly [SharpenerCosmeticId, SharpenerCosmeticId],
+): readonly [SharpenerCosmetic, SharpenerCosmetic] {
+  return [getCosmetic(cosmeticIds[0]), getCosmetic(cosmeticIds[1])];
+}

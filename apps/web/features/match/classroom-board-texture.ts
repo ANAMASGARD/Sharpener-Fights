@@ -3,6 +3,7 @@ import {
   LinearFilter,
   SRGBColorSpace,
 } from "three";
+import type { SharpenerCosmetic } from "./cosmetics";
 
 type ChalkTextOptions = {
   align?: CanvasTextAlign;
@@ -70,17 +71,38 @@ function drawChalkText(
   context.restore();
 }
 
+function fitScoreLabelFont(
+  context: CanvasRenderingContext2D,
+  label: string,
+) {
+  const maximumSize = 38;
+  context.save();
+  context.font = `700 ${maximumSize}px Courier New, monospace`;
+  const measuredWidth = context.measureText(label).width;
+  context.restore();
+  const size = Math.max(
+    23,
+    Math.min(maximumSize, Math.floor((maximumSize * 240) / measuredWidth)),
+  );
+  return `700 ${size}px Courier New, monospace`;
+}
+
 export function createScoreTexture({
   roundId,
   turnId,
   scoreZero,
   scoreOne,
+  players,
   sceneDate,
 }: {
   roundId: number;
   turnId: number;
   scoreZero: number;
   scoreOne: number;
+  players: readonly [
+    Pick<SharpenerCosmetic, "name" | "highlight">,
+    Pick<SharpenerCosmetic, "name" | "highlight">,
+  ];
   sceneDate: Date;
 }) {
   const canvas = document.createElement("canvas");
@@ -133,21 +155,23 @@ export function createScoreTexture({
     font: "700 28px Courier New, monospace",
     seed: 17,
   });
-  drawChalkText(context, "ORANGE", 120, 226, {
-    font: "700 38px Courier New, monospace",
+  const playerZeroLabel = players[0].name.toUpperCase();
+  const playerOneLabel = players[1].name.toUpperCase();
+  drawChalkText(context, playerZeroLabel, 120, 226, {
+    font: fitScoreLabelFont(context, playerZeroLabel),
     seed: 19,
   });
-  drawChalkText(context, "BLUE", 120, 304, {
-    font: "700 38px Courier New, monospace",
+  drawChalkText(context, playerOneLabel, 120, 304, {
+    font: fitScoreLabelFont(context, playerOneLabel),
     seed: 23,
   });
   drawChalkText(context, String(scoreZero), 390, 229, {
-    color: "#ee9c54",
+    color: players[0].highlight,
     font: "700 52px Courier New, monospace",
     seed: 29,
   });
   drawChalkText(context, String(scoreOne), 390, 307, {
-    color: "#65bfd1",
+    color: players[1].highlight,
     font: "700 52px Courier New, monospace",
     seed: 31,
   });

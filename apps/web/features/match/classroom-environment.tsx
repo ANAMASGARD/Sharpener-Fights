@@ -6,6 +6,7 @@ import { useEffect, useMemo } from "react";
 import type { GameSnapshot } from "@sharpener/protocol";
 import { PHYSICS } from "@sharpener/game-core";
 import { createScoreTexture } from "./classroom-board-texture";
+import { resolveMatchCosmetics } from "./cosmetics";
 import {
   createPlasterSurface,
   createTileSurface,
@@ -15,6 +16,7 @@ import {
 } from "./classroom-materials";
 import { ClassroomProps, NO_RAYCAST } from "./classroom-props";
 import type { RenderProfile } from "./render-quality";
+import type { MatchCosmetics } from "./sharpener-selector";
 
 // These three deterministic surfaces are immutable apart from sampling quality.
 // A module-owned cache keeps abandoned React renders from orphaning GPU resources.
@@ -44,18 +46,45 @@ function useSurfaceTextureSet(
 
 function Chalkboard({
   snapshot,
+  cosmetics,
   sceneDate,
 }: {
   snapshot: GameSnapshot;
+  cosmetics: MatchCosmetics;
   sceneDate: Date;
 }) {
   const roundId = snapshot.roundId;
   const turnId = snapshot.turnId;
   const scoreZero = snapshot.scores[0];
   const scoreOne = snapshot.scores[1];
+  const players = resolveMatchCosmetics(cosmetics);
+  const playerZeroName = players[0].name;
+  const playerZeroHighlight = players[0].highlight;
+  const playerOneName = players[1].name;
+  const playerOneHighlight = players[1].highlight;
   const texture = useMemo(
-    () => createScoreTexture({ roundId, turnId, scoreZero, scoreOne, sceneDate }),
-    [roundId, sceneDate, scoreOne, scoreZero, turnId],
+    () => createScoreTexture({
+      roundId,
+      turnId,
+      scoreZero,
+      scoreOne,
+      players: [
+        { name: playerZeroName, highlight: playerZeroHighlight },
+        { name: playerOneName, highlight: playerOneHighlight },
+      ],
+      sceneDate,
+    }),
+    [
+      playerOneHighlight,
+      playerOneName,
+      playerZeroHighlight,
+      playerZeroName,
+      roundId,
+      sceneDate,
+      scoreOne,
+      scoreZero,
+      turnId,
+    ],
   );
   useEffect(() => () => texture.dispose(), [texture]);
 
@@ -206,10 +235,12 @@ function TileFloor({ anisotropy }: { anisotropy: number }) {
 
 export function ClassroomEnvironment({
   snapshot,
+  cosmetics,
   profile,
   sceneDate,
 }: {
   snapshot: GameSnapshot;
+  cosmetics: MatchCosmetics;
   profile: RenderProfile;
   sceneDate: Date;
 }) {
@@ -241,7 +272,7 @@ export function ClassroomEnvironment({
       />
 
       <SchoolWall anisotropy={anisotropy} />
-      <Chalkboard snapshot={snapshot} sceneDate={sceneDate} />
+      <Chalkboard snapshot={snapshot} cosmetics={cosmetics} sceneDate={sceneDate} />
       <ClassroomProps
         wood={wood}
         shadowLevel={profile.decorativeShadowLevel}

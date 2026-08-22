@@ -36,9 +36,11 @@ const finalSnapshot: GameSnapshot = {
 
 describe("createMatchSummary", () => {
   it("projects the winner and final match statistics", () => {
-    expect(createMatchSummary(finalSnapshot)).toEqual({
+    expect(
+      createMatchSummary(finalSnapshot, ["sunflower-yellow", "graphite-black"]),
+    ).toEqual({
       winner: 0,
-      winnerName: "Orange",
+      winnerName: "Sunflower",
       finalScore: "3–1",
       roundsPlayed: 4,
       totalTurns: 17,

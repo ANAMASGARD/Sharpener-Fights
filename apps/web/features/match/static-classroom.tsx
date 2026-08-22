@@ -1,7 +1,7 @@
 import type { GameSnapshot } from "@sharpener/protocol";
 import styles from "./static-classroom.module.css";
 import { formatBoardDate } from "./classroom-board-texture";
-import { getCosmetic } from "./cosmetics";
+import { getCosmetic, resolveMatchCosmetics } from "./cosmetics";
 import type { MatchCosmetics } from "./sharpener-selector";
 
 function StaticSharpener({
@@ -38,6 +38,7 @@ export function StaticClassroom({
   sceneDate: Date;
 }) {
   const scores = snapshot?.scores ?? [0, 0];
+  const players = resolveMatchCosmetics(cosmetics);
   const boardDate = formatBoardDate(sceneDate);
   const boardIsoDate = boardDate.split("/").reverse().join("-");
   return (
@@ -60,10 +61,16 @@ export function StaticClassroom({
           <div className={styles["fallback-board-meta"]}>
             Round {snapshot?.roundId ?? 1} · Best of five
           </div>
-          <div className={styles["fallback-score-row"]}>
-            <span>Orange</span><b>{scores[0]}</b>
+          <div
+            className={styles["fallback-score-row"]}
+            style={{
+              "--score-zero": players[0].highlight,
+              "--score-one": players[1].highlight,
+            } as React.CSSProperties}
+          >
+            <span>{players[0].name}</span><b>{scores[0]}</b>
             <i />
-            <span>Blue</span><b>{scores[1]}</b>
+            <span>{players[1].name}</span><b>{scores[1]}</b>
           </div>
           <div className={styles["fallback-chalk"]} />
         </div>

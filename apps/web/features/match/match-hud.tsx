@@ -1,12 +1,10 @@
 import { PHYSICS, TICKS_PER_SECOND } from "@sharpener/game-core";
 import type { GameSnapshot, PlayerIndex } from "@sharpener/protocol";
+import { resolveMatchCosmetics } from "./cosmetics";
 import { createMatchSummary } from "./match-summary";
 import { FullscreenButton } from "./fullscreen-button";
+import type { MatchCosmetics } from "./sharpener-selector";
 import styles from "./match-ui.module.css";
-
-function fighterName(player: PlayerIndex) {
-  return player === 0 ? "Orange" : "Blue";
-}
 
 export function MatchHud({
   snapshot,
@@ -15,6 +13,7 @@ export function MatchHud({
   onChangeSharpener,
   onReset,
   localSeat,
+  cosmetics,
 }: {
   snapshot: GameSnapshot | null;
   aimPower: number;
@@ -22,7 +21,10 @@ export function MatchHud({
   onChangeSharpener: () => void;
   onReset: () => void;
   localSeat: PlayerIndex | null;
+  cosmetics: MatchCosmetics;
 }) {
+  const players = resolveMatchCosmetics(cosmetics);
+  const fighterName = (player: PlayerIndex) => players[player].name;
   const seconds = snapshot
     ? Math.ceil(snapshot.aimingTicksRemaining / TICKS_PER_SECOND)
     : PHYSICS.aimingSeconds;
@@ -31,7 +33,7 @@ export function MatchHud({
       ? "Round draw"
       : `${fighterName(snapshot.roundWinner)} wins the round`
     : "";
-  const matchSummary = snapshot ? createMatchSummary(snapshot) : null;
+  const matchSummary = snapshot ? createMatchSummary(snapshot, cosmetics) : null;
 
   return (
     <>
@@ -41,10 +43,14 @@ export function MatchHud({
       {snapshot && (
         <>
           <p className="sr-only" aria-live="polite">
-            Round {snapshot.roundId}. Orange {snapshot.scores[0]}, Blue{" "}
-            {snapshot.scores[1]}.
+            Round {snapshot.roundId}. {players[0].name} {snapshot.scores[0]},{" "}
+            {players[1].name} {snapshot.scores[1]}.
           </p>
-          <div className={styles["turn-ticket"]} aria-live="polite">
+          <div
+            className={styles["turn-ticket"]}
+            aria-live="polite"
+            data-active-player={snapshot.activePlayer}
+          >
             <span>
               {snapshot.phase === "AIMING"
                 ? localSeat === null || snapshot.activePlayer === localSeat

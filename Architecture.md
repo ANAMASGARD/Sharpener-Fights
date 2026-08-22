@@ -107,7 +107,7 @@ Current color source of truth:
 | `graphite-black` | Graphite | `#34383a` | `#151718` | `#747b7e` |
 | `aluminium-silver` | Aluminium | `#a7aa9f` | `#5d625f` | `#e4e5dc` |
 
-Changing the three hex values in `cosmetics.ts` updates the 3D model, selector preview, and DOM classroom fallback because all three consume the same cosmetic record. Adding an ID also requires updating `SharpenerCosmeticIdSchema` and its tests.
+Changing the three hex values in `cosmetics.ts` updates the 3D model, selector preview, blackboard score chalk, and DOM classroom fallback because each consumes the same cosmetic record. Match labels—including the board rows, turn ticket, announcements, round result, and winner report—also resolve from the selected cosmetic names instead of fixed seat colors. Adding an ID requires updating `SharpenerCosmeticIdSchema` and its tests.
 
 ### Match UI, input, and rendering
 
