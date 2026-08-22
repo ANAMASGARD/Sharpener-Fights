@@ -19,6 +19,10 @@ blob-report/
 # next.js
 .next/
 out/
+apps/web/public/sw.js
+apps/web/public/sw.js.map
+apps/web/public/swe-worker-*.js
+apps/web/public/swe-worker-*.js.map
 
 # production
 build/

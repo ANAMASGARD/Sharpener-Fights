@@ -1,6 +1,7 @@
 import { PHYSICS, TICKS_PER_SECOND } from "@sharpener/game-core";
 import type { GameSnapshot, PlayerIndex } from "@sharpener/protocol";
 import { createMatchSummary } from "./match-summary";
+import { FullscreenButton } from "./fullscreen-button";
 import styles from "./match-ui.module.css";
 
 function fighterName(player: PlayerIndex) {
@@ -74,6 +75,7 @@ export function MatchHud({
               </button>
             </div>
             <div>
+              <FullscreenButton />
               {snapshot.phase !== "MATCH_OVER" && (
                 <button type="button" onClick={onReset}>
                   Reset

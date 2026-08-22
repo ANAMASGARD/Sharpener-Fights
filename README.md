@@ -19,7 +19,8 @@ The vertical slice includes:
 - protocol, physics, selection, aim, and audio unit tests plus real Chrome selection/pointer/portrait smoke tests;
 - Clerk-authenticated Friend links and strict-FIFO Instant matchmaking;
 - a Colyseus service that runs the shared Rapier authority at 120 Hz and sends sequenced 20 Hz frames;
-- client prediction with authoritative in-place rebase, exact-session 30-second reconnect, ready/countdown/rematch, and six preset emotes.
+- client prediction with authoritative in-place rebase, exact-session 30-second reconnect, ready/countdown/rematch, and six preset emotes;
+- an installable desktop/mobile PWA with the supplied Sharpener Fights branding, an adaptive launcher emblem, iOS installation instructions, safe update consent, and fully offline guest Local Play.
 
 Bots, database persistence/progression, production deployment configuration, and distributed room state remain later phases. Local and online play deliberately share one headless physics/rules core.
 
@@ -31,11 +32,12 @@ apps/realtime         Colyseus rooms and Clerk verification
 packages/protocol     Validated commands, snapshots, and events
 packages/game-core    Headless Rapier simulation and match rules
 e2e                   Playwright browser smoke tests
+e2e-pwa               Production PWA install/offline browser tests
 ```
 
 ## Run locally
 
-Copy `.env.example` to `.env.local`/your process environment and fill the Clerk keys. Then run:
+Local Play does not require Clerk or the realtime server. To enable Friend and Instant modes, copy `.env.example` to `.env.local`/your process environment and fill the Clerk/realtime values. Then run:
 
 ```bash
 npm install
@@ -43,7 +45,16 @@ npm run dev:realtime
 npm run dev
 ```
 
-Open <http://localhost:3000>, sign in, choose a sharpener, then choose Local Play, Friend, or Instant Match. Portrait and landscape layouts are both supported.
+Open <http://localhost:3000>, choose a sharpener, then choose Local Play, Friend, or Instant Match. Friend and Instant ask the user to sign in; Local Play remains guest-accessible. Portrait and landscape layouts are both supported.
+
+The service worker is intentionally disabled under `npm run dev`, so development never inherits stale production caches. Installability and offline play are generated only by the production webpack build:
+
+```bash
+npm run build --workspace=@sharpener/web
+npm run start --workspace=@sharpener/web
+```
+
+On supported desktop/Android browsers, the in-game Desk Ticket exposes the browser's real install prompt after engagement. iPhone/iPad users receive Share → Add to Home Screen → Open as Web App instructions. Dismissing the ticket hides it for fourteen days. The installed app keeps orientation unlocked; matches also include an optional Full Screen button.
 
 ## Verification
 
@@ -53,9 +64,10 @@ npm run typecheck
 npm run lint
 npm run build --workspace=@sharpener/web
 npm run test:e2e
+npm run test:pwa
 ```
 
-The Playwright test uses an installed Google Chrome channel. The unit suite may print a Rapier initialization deprecation warning from the compatibility package; it does not currently fail or affect the simulation checks.
+`test:pwa` performs its own production build and uses localhost port 3200; run it serially from other browser suites. The Playwright tests use an installed Google Chrome channel. The unit suite may print a Rapier initialization deprecation warning from the compatibility package; it does not currently fail or affect the simulation checks.
 
 `render.yaml` contains the Singapore realtime-service blueprint. Configure the Clerk secrets, allowed frontend origin, and a shared build ID in Render; configure the matching public realtime URLs/build ID and Clerk keys in the Vercel web project.
 
@@ -94,3 +106,5 @@ public realtime URLs. Render must use the same value for `BUILD_ID`, and its
 `ALLOWED_WEB_ORIGINS` must include the stable Vercel production origin. Public
 `NEXT_PUBLIC_*` values are captured during `next build`, so redeploy after
 changing them. `CLERK_JWT_KEY` is optional and may remain empty.
+
+Vercel injects its Git commit SHA into the PWA cache version automatically. For a non-Vercel production host, set `NEXT_PUBLIC_PWA_CACHE_VERSION` to a release identifier when you need an explicit cache namespace; content revisions still protect individual precached assets. The worker and generated source map are build artifacts and are not committed.

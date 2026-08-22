@@ -6,7 +6,7 @@
 
 Sharpener Fights is a turn-based browser physics game. A player grabs a sharpener, pulls backward as in a pool game, and releases. Drag direction and distance become an impulse; the local grab point becomes the impulse point, so off-center shots naturally generate torque. There are no desk-edge walls. A sharpener can slide, spin, tip, fall, hit the floor, and is eliminated only after crossing a death plane.
 
-The repository implements both the local same-device match and the first authenticated online PvP vertical slice. Clerk protects play routes, Colyseus owns room/session lifecycle, and `apps/realtime` runs server-authoritative `game-core` simulations for private friend invitations and strict-FIFO instant matchmaking. There is still no computer opponent, database-backed progression, inventory, monetization, or provisioned production deployment.
+The repository implements both the local same-device match and the first authenticated online PvP vertical slice. The selector, mode desk, and Local Play are a public installable PWA shell; Clerk is isolated to Friend, Instant, invite, and online-match routes. Colyseus owns room/session lifecycle, and `apps/realtime` runs server-authoritative `game-core` simulations for private friend invitations and strict-FIFO instant matchmaking. There is still no computer opponent, database-backed progression, inventory, monetization, or provisioned production realtime deployment.
 
 ## 2. Architectural shape
 
@@ -37,6 +37,7 @@ sharpenerfight/
 ├── packages/protocol/         Shared runtime schemas and TypeScript types
 ├── packages/game-core/        Headless Rapier simulation and match rules
 ├── e2e/                       Playwright full-browser journeys
+├── e2e-pwa/                   Production service-worker/install/offline journeys
 ├── memory/                    Compact project history and handoff state
 ├── Architecture.md            This ownership and runtime map
 ├── AGENTS.md                  Always-loaded agent operating contract
@@ -64,12 +65,16 @@ apps/realtime ──────────────────────
 
 | Path | Owns | Change here when |
 | --- | --- | --- |
-| `apps/web/app/page.tsx` | Home route entry | The route should mount a different top-level experience |
+| `apps/web/app/(public)` | Public selector, mode desk, and Local Play entries | Changing the guest/offline game-shell route boundary |
+| `apps/web/app/(online)` | Clerk-scoped Friend, Instant, invite, sign-in, and online match entries | Changing the authenticated online route boundary |
 | `apps/web/components/game-loader.tsx` | Client-only dynamic loading | Loading behavior or the client/SSR seam changes |
-| `apps/web/features/match/game-experience.tsx` | Authenticated selector-to-mode transition | Changing the post-selection destination |
+| `apps/web/features/match/game-experience.tsx` | Public selector-to-mode transition | Changing the post-selection destination |
 | `apps/web/proxy.ts`, `apps/web/lib/auth-gate.ts`, `apps/web/lib/auth-redirects.ts` | Clerk request context, resource-level page authorization, missing-environment fail-closed UI, and same-origin post-authentication destinations | Changing authentication coverage, setup behavior, or where completed sign-in/sign-up flows return |
-| `apps/web/app/modes`, `queue`, `invite`, `play` | Mode, matchmaking, invite, and local/online route entries | Changing the multiplayer journey or route boundary |
-| `apps/web/app/layout.tsx` | Metadata and viewport | Changing title, description, viewport policy, or theme color |
+| `apps/web/features/multiplayer/mode-selector.tsx`, `friend-room-launcher.tsx` | Guest-safe mode choices and authenticated private-room creation | Changing how public choices cross into online authentication |
+| `apps/web/app/layout.tsx`, `manifest.ts` | PWA runtime mount, metadata, manifest, icons, and zoomable viewport | Changing install identity, shortcuts, standalone behavior, or theme color |
+| `apps/web/features/pwa/*` | Install eligibility/cooldown, iOS instructions, connectivity state, waiting-worker update consent, and Desk Ticket UI | Changing PWA install, update, or offline/online presentation policy |
+| `apps/web/app/sw.ts`, `apps/web/next.config.ts` | Serwist production worker, public-route precache, network-only online/auth policy, and build-versioned caches | Changing offline resources or service-worker lifecycle |
+| `apps/web/public/brand`, `apps/web/public/icons` | Full supplied logo and launcher/maskable icon family | Changing application branding or installed icons |
 | `apps/web/vercel.json` | App-scoped Vercel framework detection | Changing the web deployment framework configuration |
 | `vercel.json` | Root-project Vercel compatibility build that delegates to `@sharpener/web` | Supporting an existing Vercel project whose Root Directory is still the repository root |
 | `apps/web/app/icon.svg` | Browser/app icon | Changing the favicon artwork |
@@ -307,7 +312,17 @@ All classroom/environment meshes use `NO_RAYCAST`. Only sharpener render geometr
 
 `supportsWebGL()` probes WebGL2 then WebGL and releases the probe context. `StaticClassroom` is always mounted beneath the R3F layer. When WebGL is unavailable, the R3F canvas is not constructed and the DOM scene remains visible with a hardware-acceleration notice. Keep the fallback structurally independent from Three.js so renderer failure cannot erase it.
 
-## 8. Persistence and external state
+## 8. Installable and offline application shell
+
+Production webpack builds use pinned `@serwist/next`/`serwist` 9.5.12 to generate `apps/web/public/sw.js`; development remains Turbopack with Serwist disabled. The worker precaches the three public routes (`/`, `/modes`, `/play/local`), their Next chunks/worker/fonts, supplied logo/icons, and all game audio. The measured generated asset set is about 7.7 MB, below the 15 MB release budget. Navigations and RSC requests for those exact routes may use offline caches. APIs, Clerk/auth pages, Friend/Instant/invite/online-match routes, WebSockets, mutations, and all cross-origin traffic are network-only.
+
+The root layout is deliberately Clerk-free. `app/(online)/layout.tsx` is the only client-provider boundary, so guest Local Play can render from the service worker without authentication scripts or credentials. Online buttons use the same-origin `/api/connectivity` probe and remain disabled with an honest offline status when authority cannot be reached.
+
+`PwaRuntime` registers the worker only in production. Install UI appears only on `/` or `/modes`, after both a user interaction and eight seconds, and only when the browser provides a real `beforeinstallprompt` event or the device needs iOS/iPadOS manual instructions. A dismissal is remembered for fourteen days at `sharpener-fights:pwa-install-dismissed-at`. Unsupported browsers receive no fake install action. Updates remain waiting; the UI offers `SKIP_WAITING` only on selector/mode screens and reloads once after `controllerchange`, never during a match. Installed orientation remains unlocked, while the match HUD exposes an optional user-triggered Full Screen control.
+
+The production-only `npm run test:pwa` suite builds with webpack, starts `next start` on port 3200, and verifies manifest/viewport metadata, real service-worker control, offline Local Play reload, and the delayed branded native-install flow. Normal `npm run dev` and `npm run test:e2e` remain service-worker-free.
+
+## 9. Persistence and external state
 
 The realtime service is ephemeral and in-memory: rooms, queue entries, invites, rate-limit windows, and profile cache disappear on process restart. There is no application database. Clerk is the trusted identity provider; the server verifies tokens and active reconnect sessions rather than trusting browser profile fields. Browser-local state is:
 
@@ -315,11 +330,12 @@ The realtime service is ephemeral and in-memory: rooms, queue entries, invites, 
 | --- | --- |
 | `sharpener-fights:cosmetic` | One validated cosmetic ID |
 | `sharpener-fights:audio` | `{ sfxMuted, musicMuted }` JSON; legacy `ambienceMuted` is migrated on read |
+| `sharpener-fights:pwa-install-dismissed-at` | Millisecond timestamp suppressing the install Desk Ticket for fourteen days |
 | tab `sessionStorage` reconnect key | Colyseus room reconnection token; cleared with the tab/session |
 
 Malformed cosmetic/audio values fall back to defaults. Local scores reset on reload; online scores live only for the lifetime of the authoritative room.
 
-## 9. Test architecture
+## 10. Test architecture
 
 | Test surface | Files | Protects |
 | --- | --- | --- |
@@ -332,9 +348,11 @@ Malformed cosmetic/audio values fall back to defaults. Local scores reset on rel
 | Sharpener appearance | `apps/web/features/match/sharpener-appearance.test.ts` | collider-envelope occupancy, classic compact proportions, blade/body hierarchy, and cosmetic-only material response |
 | Cosmetics | `apps/web/features/match/cosmetics.test.ts` | six fair choices, distinct opponent color, storage validation |
 | Authentication return | `apps/web/lib/auth-redirects.test.ts` | completed sign-in/sign-up flows return to the same-origin game home instead of Clerk's hosted default redirect |
+| PWA policy | `apps/web/features/pwa/pwa-policy.test.ts` | exact public/offline and safe-install route sets, native/iOS surfaces, and fourteen-day cooldown |
 | Audio | `audio.test.ts`, `media-audio.test.ts` | event mapping, preference migration, loop/volume, independent mute, collision, simultaneous victory, seven-second cutoff, and reset |
 | Match summary | `apps/web/features/match/match-summary.test.ts` | winner label, final score, rounds, and turns |
 | Browser journey | `e2e/local-match.spec.ts` | enclosed selector shell across six cosmetics/extreme poses, selection, pointer release, decoration raycast exclusion, audio menu/playback calls/assets, timeout-drag cancellation, quality fallback, portrait usability, enriched DOM classroom, WebGL-disabled fallback |
+| Production PWA journey | `e2e-pwa/pwa.spec.ts` | install manifest, zoomable viewport, generated worker control, offline local reload, engagement delay, supplied-logo Desk Ticket, and real prompt invocation |
 | Realtime protocol/authority | `packages/protocol/src/realtime.test.ts`, `apps/realtime/src/*test.ts` | versioned joins, lobby-only Schema, exact-session reconnect, rate limits, FIFO queue, invitation expiry, authoritative shots, overload policy, and twenty-room local authority load |
 | Seat/frame presentation | `presentation-space.test.ts`, `frame-sequence.test.ts` | Seat A/B round trips, inverse input/effects, and stale authoritative-frame rejection |
 
@@ -342,7 +360,7 @@ Use the `GameSimulation` interface for rules tests. Avoid testing physics by rep
 
 Playwright owns port 3100 and sets a development-only `NEXT_PUBLIC_E2E_AUTH_BYPASS`; production builds cannot activate that bypass. Keeping E2E off the normal port prevents an unrelated developer server from silently changing test configuration.
 
-## 10. Common change recipes
+## 11. Common change recipes
 
 | Requested change | Primary file(s) | Required follow-through |
 | --- | --- | --- |
@@ -362,15 +380,16 @@ Playwright owns port 3100 and sets a development-only `NEXT_PUBLIC_E2E_AUTH_BYPA
 | Diagnose a blank arena | `webgl-support.ts`, `static-classroom.tsx`, browser console | Preserve no-WebGL E2E coverage; do not add another Canvas |
 | Change matchmaking/invites | `multiplayer-registry.ts`, `queue-room.ts`, `fight-room.ts` | Preserve account limits, FIFO ordering, invite entropy/expiry, exact-session seat reclaim, and protocol validation |
 | Change online frame flow | `room-controller.ts`, `realtime.ts`, `use-online-match.ts` | Keep one 120 Hz authority, one 20 Hz transform stream, sequence rejection, bounded catch-up, and in-place prediction rebase |
+| Change install/offline behavior | `features/pwa`, `app/sw.ts`, `manifest.ts`, `next.config.ts` | Keep online/auth routes network-only, updates match-safe, development SW-free, and the precache below 15 MB; run `npm run test:pwa` |
 
-## 11. Planned architecture, not implemented
+## 12. Planned architecture, not implemented
 
 Computer play remains future work. A seeded bot should run outside rendering and submit the same `ShotCommand` interface; no bot participates in Friend or Instant rooms. Database persistence, progression, inventory, leaderboards, moderation tooling, production observability, and distributed queue/presence are also not implemented. `render.yaml` defines the Singapore realtime service, but no production service or secrets are provisioned. The current in-memory service is appropriate for one-process beta validation, not horizontal scaling. The preferred Vercel project configuration uses `apps/web` as its Root Directory with outside-root sources enabled. For the existing repository-root Vercel project, the root `vercel.json` delegates directly to `@sharpener/web`, and the root manifest exposes the same pinned Next.js version solely for Vercel framework detection. Both paths build the same application and shared npm workspaces.
 
-## 12. Known constraints and maintenance notes
+## 13. Known constraints and maintenance notes
 
 - Next.js is pinned to 16.3.1. Read installed documentation under `node_modules/next/dist/docs/` before Next-specific edits.
-- `apps/web/next.config.ts` transpiles the workspace packages and disables the detached TypeScript CLI in the managed environment because its output was lost; `npm run typecheck` remains an explicit gate.
+- `apps/web/next.config.ts` transpiles the workspace packages, uses webpack for production Serwist injection, and disables the detached TypeScript CLI in the managed environment because its output was lost; `npm run typecheck` remains an explicit gate.
 - R3F/Three cannot provide interactive 3D when the browser disables WebGL. The DOM fallback is visual and explanatory, not a second playable engine.
 - AudioContext creation and audible HTML-media playback must remain behind a user gesture.
 - Clerk and the realtime server require the environment variables documented in `.env.example`; without them the web app shows an explicit setup screen rather than silently bypassing authentication.

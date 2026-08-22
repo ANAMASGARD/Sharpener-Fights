@@ -291,6 +291,8 @@ test("plays the supplied background track and keeps independent audio controls a
   await expect.poll(() => playCount("/audio/Lock-IN-sound.mp3")).toBe(1);
   await expect(page.locator("[data-phase='AIMING']")).toBeVisible();
 
+  // Route entry creates a fresh match-level audio menu, which is closed by default.
+  await page.getByRole("button", { name: "Sound settings" }).click();
   await page.getByRole("button", { name: "Mute background music" }).click();
   await page.getByRole("button", { name: "Mute sound effects" }).click();
   await expect(page.getByRole("button", { name: "Unmute background music" })).toBeVisible();

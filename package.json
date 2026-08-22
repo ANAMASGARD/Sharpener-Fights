@@ -14,7 +14,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:pwa": "npm run build --workspace=@sharpener/web && playwright test --config=playwright.pwa.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

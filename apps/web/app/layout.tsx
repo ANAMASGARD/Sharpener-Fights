@@ -1,29 +1,38 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { ClerkProvider } from "@clerk/nextjs";
-import { clerkConfigured } from "@/lib/auth-gate";
-import { clerkProviderRedirects } from "@/lib/auth-redirects";
+import { PwaRuntime } from "@/features/pwa/pwa-runtime";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Sharpener Fights",
   description: "Aim like pool. Hit like physics. Own the desk.",
+  applicationName: "Sharpener Fights",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "SharpFights",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  themeColor: "#9ba38c",
+  viewportFit: "cover",
+  themeColor: "#183345",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const content = clerkConfigured() ? (
-    <ClerkProvider {...clerkProviderRedirects}>{children}</ClerkProvider>
-  ) : children;
   return (
     <html lang="en">
-      <body>{content}</body>
+      <body><PwaRuntime>{children}</PwaRuntime></body>
     </html>
   );
 }

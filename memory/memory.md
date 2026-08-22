@@ -29,6 +29,8 @@ The differentiator is 3D asymmetric rigid-body behavior: sharpeners translate, r
 - Identity and reclaim: Clerk JWTs are verified by the realtime server. A reserved seat can be reclaimed only by the same verified account and active Clerk session within 30 seconds.
 - Match modes: existing same-device Local Play remains available; Friend and Instant are human-only online modes. Computer bots remain future work.
 - Synchronization: Colyseus Schema contains lobby metadata only. Body transforms use `GAME_FRAME`; browser prediction rebases in-place from authoritative snapshots and discards stale frame sequences.
+- PWA boundary: selector, mode selection, and Local Play are public/offline; Friend, Instant, invite, sign-in, and online match routes remain Clerk-scoped and network-only. Development never registers a service worker.
+- Install/update policy: show the branded install Desk Ticket only on safe pre-match screens after engagement plus eight seconds; remember dismissal for fourteen days; use manual iOS/iPadOS instructions where native prompting is unavailable. Waiting worker updates require user consent on safe screens and never reload an active match.
 
 ## What was implemented
 
@@ -174,3 +176,13 @@ Recommended next product order remains:
 
 - Completed Clerk sign-in and sign-up onboarding returns to `/`, which resolves to `http://localhost:3000/` during development and the active deployment origin in production. The dedicated sign-in route forces this destination so Clerk's hosted `accounts.dev/default-redirect` cannot retain a completed user; global fallback redirects cover modal authentication without overriding an explicit invite return URL.
 - Verification at this checkpoint: 91 unit tests across 24 files, workspace typecheck, lint, production build, and `git diff --check` passed. A real Google OAuth browser round trip was not automated because it requires an interactive Clerk account.
+
+### Installable/offline PWA pass
+
+- Isolated Clerk to the `(online)` route group. `/`, `/modes`, and `/play/local` now work for guests; Friend/Instant still require the same verified Clerk flow and realtime authority.
+- Added a standards-based manifest with standalone display, unlocked orientation, Local/Modes shortcuts, cream/navy theme, 192/512 icons, a 512 maskable icon, and a 180 Apple touch icon. The full user-supplied logo appears in the torn-paper install Desk Ticket; the launcher family uses a text-free blue/red sharpener collision emblem derived from that artwork.
+- Added pinned Serwist 9.5.12 production integration. Production uses `next build --webpack`; development remains Turbopack with an explicit empty `turbopack` config and Serwist disabled. Generated worker artifacts are ignored.
+- The production worker precaches the public game shell, local physics/Three/Rapier chunks, fonts, logo/icons, and supplied audio. Exact public navigations/RSC can work offline; APIs, Clerk/auth, Friend/Instant/invite/online-match routes, mutations, WebSockets, and cross-origin traffic remain network-only. Vercel Git SHA versions cache namespaces; non-Vercel hosts may set `NEXT_PUBLIC_PWA_CACHE_VERSION`.
+- Added an internal PWA runtime for native `beforeinstallprompt`, iOS/iPadOS Share → Add to Home Screen instructions, fourteen-day dismissal, installed-mode detection, connectivity status, safe waiting-worker activation, and one-time reload after `controllerchange`. Unsupported browsers receive no fake install button.
+- Added an optional user-triggered Full Screen control in the match HUD without forcing orientation or changing camera/physics behavior. Global maximum-zoom restriction was removed; gesture suppression stays local to the game canvas.
+- Added a production-only Playwright suite on port 3200. Final verification: 96 unit tests across 25 files passed; workspace typecheck, lint, production webpack build, and `git diff --check` passed; all 13 development gameplay E2E journeys passed; all 3 production PWA journeys passed, including manifest/viewport, real service-worker control, offline Local Play reload, and delayed branded install prompt. The measured precached public/static asset set is about 7.7 MB, below the 15 MB budget.
